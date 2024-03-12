@@ -43,5 +43,10 @@ public class ProjectsController {
     public ResponseEntity<ResponseDto<?>> setStartEndDatesToProject(@PathVariable String Uid) {
         return ResponseEntity.ok(projectsService.setProjectsStartAndEndDates(Uid));
     }
+    @PostMapping("/save")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<ResponseDto<ProjectEntity>> saveNewEntity(@RequestBody ProjectEntity entity) {
+        return ResponseEntity.ok(projectsService.addNewEntity(entity));
+    }
 
 }
