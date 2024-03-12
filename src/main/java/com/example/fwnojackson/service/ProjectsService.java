@@ -93,16 +93,48 @@ public class ProjectsService {
                 }
                 index++;
             }
-            ProjectEntity project;
-            if (projects.containsKey(projectUid))
-                project = projects.get(projectUid);
-            else
-                project = subprojects.get(projectUid);
+            ProjectEntity project = projects.containsKey(projectUid) ? projects.get(projectUid) : subprojects.get(projectUid);
             project.setStartDate(earliest);
             project.setEndDate(latest);
             repository.save(project);
             return new ResponseDto<ProjectEntity>("Updated start and end date", project, 1);
         } else return new ResponseDto<String>("Invalid or unknown Uid entered", null, 0);
+    }
+
+    public ResponseDto<ProjectEntity> addNewEntity(ProjectEntity entity) {
+        if (Objects.nonNull(entity.getParentUid())) {
+            if (entity.getType().equalsIgnoreCase("PROJECT")) {
+                // check that Subproject has a related Task
+                for (String taskId : tasks.keySet()) {
+                    if (tasks.get(taskId).getParentUid().equalsIgnoreCase(entity.getUid())) {
+                        if (projects.containsKey(entity.getParentUid()))
+                            addChildEntityToList(entity, projects);
+                        else
+                            addChildEntityToList(entity, subprojects);
+                        subprojects.put(entity.getUid(), entity);
+                        return new ResponseDto<>("New Subproject added", entity, 1);
+                    }
+                }
+                return new ResponseDto<>("Not found related task", 0);
+            } else if (entity.getType().equalsIgnoreCase("TASK")) {
+                if (subprojects.containsKey(entity.getParentUid())) {
+                    addChildEntityToList(entity, subprojects);
+                } else {
+                    subprojects.put(entity.getParentUid(), null);
+                    addChildEntityToList(entity, subprojects);
+                    // Do I need to force creation of a new Subproject in this case to avoid null?
+                }
+                tasks.put(entity.getUid(), entity);
+                return new ResponseDto<>("New Task added", entity, 1);
+            } else
+                return new ResponseDto<>("Invalid entity type", 0);
+        } else
+            return new ResponseDto<>("Invalid entity type", 0);
+    }
+    private void attachNewEntityToParent(ProjectEntity entity) {
+        List<String> ids = Uids.get(entity.getParentUid());
+        ids.add(entity.getUid());
+        Uids.put(entity.getParentUid(), ids);
     }
 
     public Map<String, ProjectEntity> getProjects() {
