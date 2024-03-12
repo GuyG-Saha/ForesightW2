@@ -131,12 +131,6 @@ public class ProjectsService {
         } else
             return new ResponseDto<>("Invalid entity type", 0);
     }
-    private void attachNewEntityToParent(ProjectEntity entity) {
-        List<String> ids = Uids.get(entity.getParentUid());
-        ids.add(entity.getUid());
-        Uids.put(entity.getParentUid(), ids);
-    }
-
     public Map<String, ProjectEntity> getProjects() {
         return projects;
     }
