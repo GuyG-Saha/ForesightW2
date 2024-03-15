@@ -1,5 +1,8 @@
 package com.example.fwnojackson.model;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -19,7 +22,6 @@ public class ProjectEntity {
     public ProjectEntity() {
 
     }
-
     public ProjectEntity(String uid, String name, String type, LocalDate startDate, LocalDate endDate, String parentUid) {
         this.uid = uid;
         this.name = name;
@@ -27,6 +29,11 @@ public class ProjectEntity {
         this.startDate = startDate;
         this.endDate = endDate;
         this.parentUid = parentUid;
+    }
+    public String serializeProject() throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
+        return mapper.writeValueAsString(this);
     }
 
     public String getUid() {

@@ -4,6 +4,7 @@ import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
 import com.example.fwnojackson.model.ProjectEntity;
 import com.example.fwnojackson.service.ProjectsService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,6 @@ import java.util.Map;
 public class ProjectsController {
     @Autowired
     ProjectsService projectsService;
-
     @GetMapping("/projects")
     public Map<String, ProjectEntity> getAllProjects() {
         return projectsService.getProjects();
@@ -48,5 +48,8 @@ public class ProjectsController {
     public ResponseEntity<ResponseDto<ProjectEntity>> saveNewEntity(@RequestBody ProjectEntity entity) {
         return ResponseEntity.ok(projectsService.addNewEntity(entity));
     }
-
+    @GetMapping("/hierarchy")
+    public ResponseEntity<String> getProjectHierarchyAsJson() throws JsonProcessingException {
+        return ResponseEntity.ok(projectsService.serializeProjectStructure());
+    }
 }

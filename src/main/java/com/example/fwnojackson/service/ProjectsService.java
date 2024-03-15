@@ -4,6 +4,7 @@ import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
 import com.example.fwnojackson.model.ProjectEntity;
 import com.example.fwnojackson.repository.ProjectEntityRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -131,6 +132,48 @@ public class ProjectsService {
         } else
             return new ResponseDto<>("Invalid entity type", 0);
     }
+    public String serializeProjectStructure() throws JsonProcessingException {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (Map.Entry<String, ProjectEntity> entry : projects.entrySet()) {
+            ProjectEntity project = entry.getValue();
+            sb.append(project.serializeProject());
+            List<String> childUidList = Uids.get(project.getUid());
+            if (Objects.nonNull(childUidList) && !childUidList.isEmpty()) {
+                sb.append(",\"children\":").append(serializeChildren(project.getUid(), subprojects));
+            }
+            sb.append(",");
+        }
+        if (sb.length() > 1) {
+            sb.setLength(sb.length() - 1); // Remove trailing comma
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private String serializeChildren(String parentUid, Map<String, ProjectEntity> projects) throws JsonProcessingException {
+        List<String> childUids = Uids.get(parentUid);
+        if (Objects.isNull(childUids) || childUids.isEmpty()) {
+            return "[]"; // Empty array if no children
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (String childUid : childUids) {
+            ProjectEntity childProject = projects.get(childUid);
+            if (childProject != null) {
+                sb.append(childProject.serializeProject()).append(",");
+                String grandChildren = serializeChildren(childUid, projects); // Recursive call for children
+                if (!grandChildren.equals("[]")) { // Avoid empty child arrays
+                    sb.append("\"children\":").append(grandChildren).append(",");
+                }
+            }
+        }
+        if (sb.length() > 1) {
+            sb.setLength(sb.length() - 1); // Remove trailing comma
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
     public Map<String, ProjectEntity> getProjects() {
         return projects;
     }
