@@ -19,16 +19,19 @@ public class ProjectsController {
     @Autowired
     ProjectsService projectsService;
     @GetMapping("/projects")
-    public Map<String, ProjectEntity> getAllProjects() {
-        return projectsService.getProjects();
-    }
-    @GetMapping("/subprojects")
-    public Map<String, ProjectEntity> getAllSubProjects() {
-        return projectsService.getSubprojects();
-    }
-    @GetMapping("/tasks")
-    public Map<String, ProjectEntity> getAllTasks() {
-        return projectsService.getTasks();
+    public Map<String, ProjectEntity> getAllProjects(@RequestParam String type) {
+        switch (type.toUpperCase()) {
+            case "PROJECT", "PROJECTS" -> {
+                return projectsService.getProjects();
+            }
+            case "SUBPROJECT", "SUBPROJECTS" -> {
+                return projectsService.getSubprojects();
+            }
+            case "TASK", "TASKS" -> {
+                return projectsService.getTasks();
+            }
+        }
+        return null;
     }
     @GetMapping("/relations")
     public Map<String, List<String>> getAllProjectsRelations() {
