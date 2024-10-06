@@ -30,10 +30,8 @@ public class ProjectEntity {
         this.endDate = endDate;
         this.parentUid = parentUid;
     }
-    public String serializeProject() throws JsonProcessingException {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
-        return mapper.writeValueAsString(this);
+    public ProjectEntity serializeProject() {
+        return this;
     }
 
     public String getUid() {
