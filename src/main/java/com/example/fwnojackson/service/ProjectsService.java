@@ -132,47 +132,53 @@ public class ProjectsService {
         } else
             return new ResponseDto<>("Invalid entity type", 0);
     }
-    public String serializeProjectStructure() throws JsonProcessingException {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
+    public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
+        List<Map<String, Object>> projectList = new ArrayList<>();
         for (Map.Entry<String, ProjectEntity> entry : projects.entrySet()) {
             ProjectEntity project = entry.getValue();
-            sb.append(project.serializeProject());
-            List<String> childUidList = Uids.get(project.getUid());
-            if (Objects.nonNull(childUidList) && !childUidList.isEmpty()) {
-                sb.append(",\"children\":").append(serializeChildren(project.getUid(), subprojects));
+            // Use LinkedHashMap to ensure field order
+            Map<String, Object> projectMap = new LinkedHashMap<>();
+            projectMap.put("project", project.serializeProject());
+            // Serialize both subprojects and tasks for the current project
+            List<Map<String, Object>> children = serializeChildren(project.getUid(), subprojects, tasks);
+            if (!children.isEmpty()) {
+                projectMap.put("children", children);
             }
-            sb.append(",");
+            projectList.add(projectMap);
         }
-        if (sb.length() > 1) {
-            sb.setLength(sb.length() - 1); // Remove trailing comma
-        }
-        sb.append("]");
-        return sb.toString();
+        return projectList;
     }
-
-    private String serializeChildren(String parentUid, Map<String, ProjectEntity> projects) throws JsonProcessingException {
+    private List<Map<String, Object>> serializeChildren(String parentUid, Map<String, ProjectEntity> subprojects, Map<String, ProjectEntity> tasks) throws JsonProcessingException {
+        List<Map<String, Object>> childrenList = new ArrayList<>();
         List<String> childUids = Uids.get(parentUid);
         if (Objects.isNull(childUids) || childUids.isEmpty()) {
-            return "[]"; // Empty array if no children
+            return childrenList;
         }
-        StringBuilder sb = new StringBuilder("[");
         for (String childUid : childUids) {
-            ProjectEntity childProject = projects.get(childUid);
+            ProjectEntity childProject = subprojects.get(childUid);
             if (childProject != null) {
-                sb.append(childProject.serializeProject()).append(",");
-                String grandChildren = serializeChildren(childUid, projects); // Recursive call for children
-                if (!grandChildren.equals("[]")) { // Avoid empty child arrays
-                    sb.append("\"children\":").append(grandChildren).append(",");
+                // Create a LinkedHashMap to maintain field order for subprojects
+                Map<String, Object> childMap = new LinkedHashMap<>();
+                childMap.put("subproject", childProject.serializeProject());
+                // Recursively serialize grandchildren (both subprojects and tasks)
+                List<Map<String, Object>> grandChildren = serializeChildren(childUid, subprojects, tasks);
+                if (!grandChildren.isEmpty()) {
+                    childMap.put("children", grandChildren); // Add grandchildren if present
                 }
+                childrenList.add(childMap);
+            }
+            // Handle tasks
+            ProjectEntity task = tasks.get(childUid);
+            if (task != null) {
+                Map<String, Object> taskMap = new LinkedHashMap<>();
+                taskMap.put("task", task.serializeProject());
+                // No further recursion for tasks (they have no children) so just add them
+                childrenList.add(taskMap);
             }
         }
-        if (sb.length() > 1) {
-            sb.setLength(sb.length() - 1); // Remove trailing comma
-        }
-        sb.append("]");
-        return sb.toString();
+        return childrenList;
     }
+
 
     public Map<String, ProjectEntity> getProjects() {
         return projects;
