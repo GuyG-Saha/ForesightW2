@@ -31,7 +31,11 @@ public class ProjectsController {
                 return projectsService.getTasks();
             }
         }
-        return null;
+        return projectsService.getProjects();
+    }
+    @GetMapping("/projects/hierarchy")
+    public ResponseEntity<List<Map<String, Object>>> getProjectHierarchyAsJson() throws JsonProcessingException {
+        return ResponseEntity.ok(projectsService.serializeProjectStructure());
     }
     @GetMapping("/relations")
     public Map<String, List<String>> getAllProjectsRelations() {
@@ -50,9 +54,5 @@ public class ProjectsController {
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<ResponseDto<ProjectEntity>> saveNewEntity(@RequestBody ProjectEntity entity) {
         return ResponseEntity.ok(projectsService.addNewEntity(entity));
-    }
-    @GetMapping("/hierarchy")
-    public ResponseEntity<String> getProjectHierarchyAsJson() throws JsonProcessingException {
-        return ResponseEntity.ok(projectsService.serializeProjectStructure());
     }
 }
