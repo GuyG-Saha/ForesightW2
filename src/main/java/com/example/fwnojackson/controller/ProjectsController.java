@@ -19,19 +19,23 @@ public class ProjectsController {
     @Autowired
     ProjectsService projectsService;
     @GetMapping("/projects")
-    public Map<String, ProjectEntity> getAllProjects(@RequestParam String type) {
+    public ResponseEntity<Map<String, ?>> getAllProjects(@RequestParam(required = false) String type) {
+        if (type == null || type.isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("error", "Type parameter is required"));
         switch (type.toUpperCase()) {
             case "PROJECT", "PROJECTS" -> {
-                return projectsService.getProjects();
+                return ResponseEntity.ok(projectsService.getProjects());
             }
             case "SUBPROJECT", "SUBPROJECTS" -> {
-                return projectsService.getSubprojects();
+                return ResponseEntity.ok(projectsService.getSubprojects());
             }
             case "TASK", "TASKS" -> {
-                return projectsService.getTasks();
+                return ResponseEntity.ok(projectsService.getTasks());
+            }
+            default -> {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid type parameter. Allowed values: PROJECT, SUBPROJECT, TASK"));
             }
         }
-        return projectsService.getProjects();
     }
     @GetMapping("/projects/hierarchy")
     public ResponseEntity<List<Map<String, Object>>> getProjectHierarchyAsJson() throws JsonProcessingException {
