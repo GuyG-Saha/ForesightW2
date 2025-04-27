@@ -121,17 +121,16 @@ public class ProjectsService {
                 if (subprojects.containsKey(entity.getParentUid())) {
                     addChildEntityToList(entity, subprojects);
                 } else {
-                    subprojects.put(entity.getParentUid(), null);
-                    addChildEntityToList(entity, subprojects);
-                    // Do I need to force creation of a new Subproject in this case to avoid null?
+                    // I don't enforce creation of a new Subproject - avoid null values in the map
+                    return new ResponseDto<>("Unknown parent Uid provided", 0);
                 }
                 tasks.put(entity.getUid(), entity);
                 return new ResponseDto<>("New Task added", entity, 1);
-            } else
-                return new ResponseDto<>("Invalid entity type", 0);
-        } else
-            return new ResponseDto<>("Invalid entity type", 0);
+            }
+        }
+        return new ResponseDto<>("Invalid entity type", 0);
     }
+
     public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
         List<Map<String, Object>> projectList = new ArrayList<>();
         for (Map.Entry<String, ProjectEntity> entry : projects.entrySet()) {
