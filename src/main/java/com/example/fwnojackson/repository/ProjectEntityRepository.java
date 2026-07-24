@@ -1,7 +1,7 @@
 package com.example.fwnojackson.repository;
 
-import com.example.fwnojackson.model.ProjectEntity;
+import com.example.fwnojackson.model.ProjectComponent;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ProjectEntityRepository extends JpaRepository<ProjectEntity, String> {
+public interface ProjectEntityRepository extends JpaRepository<ProjectComponent, String> {
 }

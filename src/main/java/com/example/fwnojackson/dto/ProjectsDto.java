@@ -1,25 +1,25 @@
 package com.example.fwnojackson.dto;
 
-import com.example.fwnojackson.model.ProjectEntity;
+import com.example.fwnojackson.model.ProjectComponent;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ProjectsDto {
-    private List<ProjectEntity> items;
+    private List<ProjectComponent> items;
 
     public ProjectsDto() {
-        items = new ArrayList<ProjectEntity>();
+        items = new ArrayList<ProjectComponent>();
     }
-    public ProjectsDto(List<ProjectEntity> items) {
+    public ProjectsDto(List<ProjectComponent> items) {
         this.items = items;
     }
 
-    public List<ProjectEntity> getItems() {
+    public List<ProjectComponent> getItems() {
         return items;
     }
 
-    public void setItems(List<ProjectEntity> items) {
+    public void setItems(List<ProjectComponent> items) {
         this.items = items;
     }
 }

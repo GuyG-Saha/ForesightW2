@@ -2,7 +2,7 @@ package com.example.fwnojackson.service;
 
 import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
-import com.example.fwnojackson.model.ProjectEntity;
+import com.example.fwnojackson.model.ProjectComponent;
 import com.example.fwnojackson.repository.ProjectEntityRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,9 +14,9 @@ import java.util.*;
 @Service
 public class ProjectsService {
     private final ProjectEntityRepository repository;
-    private final Map<String, ProjectEntity> projects;
-    private final Map<String, ProjectEntity> subprojects;
-    private final Map<String, ProjectEntity> tasks;
+    private final Map<String, ProjectComponent> projects;
+    private final Map<String, ProjectComponent> subprojects;
+    private final Map<String, ProjectComponent> tasks;
     private final Map<String, List<String>> Uids;
 
     @Autowired
@@ -29,7 +29,7 @@ public class ProjectsService {
     }
     public ResponseDto<?> loadAllProjectEntities(ProjectsDto dto) {
         if (Objects.nonNull(dto)) {
-            for (ProjectEntity entity : dto.getItems()) {
+            for (ProjectComponent entity : dto.getItems()) {
                 if (entity.getType().equalsIgnoreCase("PROJECT")
                     && Objects.isNull(entity.getParentUid())) {
                     projects.put(entity.getUid(), entity);
@@ -50,7 +50,7 @@ public class ProjectsService {
         } else
             return new ResponseDto<>("Bad Request", 0);
     }
-    private void attachEntityToParent(ProjectEntity entity) {
+    private void attachEntityToParent(ProjectComponent entity) {
         switch (entity.getType().toUpperCase()) {
             case "PROJECT":
                 if (projects.containsKey(entity.getParentUid()))
@@ -63,7 +63,7 @@ public class ProjectsService {
                 break;
         }
     }
-    private void addChildEntityToList(ProjectEntity entity, Map<String, ProjectEntity> parentsMap) {
+    private void addChildEntityToList(ProjectComponent entity, Map<String, ProjectComponent> parentsMap) {
         if (parentsMap.containsKey(entity.getParentUid())
                 && Objects.nonNull(Uids.get(entity.getParentUid()))) {
             Uids.get(entity.getParentUid()).add(entity.getUid());
@@ -94,15 +94,15 @@ public class ProjectsService {
                 }
                 index++;
             }
-            ProjectEntity project = projects.containsKey(projectUid) ? projects.get(projectUid) : subprojects.get(projectUid);
+            ProjectComponent project = projects.containsKey(projectUid) ? projects.get(projectUid) : subprojects.get(projectUid);
             project.setStartDate(earliest);
             project.setEndDate(latest);
             repository.save(project);
-            return new ResponseDto<ProjectEntity>("Updated start and end date", project, 1);
+            return new ResponseDto<ProjectComponent>("Updated start and end date", project, 1);
         } else return new ResponseDto<String>("Invalid or unknown Uid entered", null, 0);
     }
 
-    public ResponseDto<ProjectEntity> addNewEntity(ProjectEntity entity) {
+    public ResponseDto<ProjectComponent> addNewEntity(ProjectComponent entity) {
         if (Objects.nonNull(entity.getParentUid())) {
             if (entity.getType().equalsIgnoreCase("PROJECT")) {
                 // check that Subproject has a related Task
@@ -134,8 +134,8 @@ public class ProjectsService {
     }
     public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
         List<Map<String, Object>> projectList = new ArrayList<>();
-        for (Map.Entry<String, ProjectEntity> entry : projects.entrySet()) {
-            ProjectEntity project = entry.getValue();
+        for (Map.Entry<String, ProjectComponent> entry : projects.entrySet()) {
+            ProjectComponent project = entry.getValue();
             // Use LinkedHashMap to ensure field order
             Map<String, Object> projectMap = new LinkedHashMap<>();
             projectMap.put("project", project.serializeProject());
@@ -148,14 +148,14 @@ public class ProjectsService {
         }
         return projectList;
     }
-    private List<Map<String, Object>> serializeChildren(String parentUid, Map<String, ProjectEntity> subprojects, Map<String, ProjectEntity> tasks) throws JsonProcessingException {
+    private List<Map<String, Object>> serializeChildren(String parentUid, Map<String, ProjectComponent> subprojects, Map<String, ProjectComponent> tasks) throws JsonProcessingException {
         List<Map<String, Object>> childrenList = new ArrayList<>();
         List<String> childUids = Uids.get(parentUid);
         if (Objects.isNull(childUids) || childUids.isEmpty()) {
             return childrenList;
         }
         for (String childUid : childUids) {
-            ProjectEntity childProject = subprojects.get(childUid);
+            ProjectComponent childProject = subprojects.get(childUid);
             if (childProject != null) {
                 // Create a LinkedHashMap to maintain field order for subprojects
                 Map<String, Object> childMap = new LinkedHashMap<>();
@@ -168,7 +168,7 @@ public class ProjectsService {
                 childrenList.add(childMap);
             }
             // Handle tasks
-            ProjectEntity task = tasks.get(childUid);
+            ProjectComponent task = tasks.get(childUid);
             if (task != null) {
                 Map<String, Object> taskMap = new LinkedHashMap<>();
                 taskMap.put("task", task.serializeProject());
@@ -180,15 +180,15 @@ public class ProjectsService {
     }
 
 
-    public Map<String, ProjectEntity> getProjects() {
+    public Map<String, ProjectComponent> getProjects() {
         return projects;
     }
 
-    public Map<String, ProjectEntity> getSubprojects() {
+    public Map<String, ProjectComponent> getSubprojects() {
         return subprojects;
     }
 
-    public Map<String, ProjectEntity> getTasks() {
+    public Map<String, ProjectComponent> getTasks() {
         return tasks;
     }
 

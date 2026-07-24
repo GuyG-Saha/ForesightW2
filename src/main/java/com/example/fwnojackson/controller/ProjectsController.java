@@ -2,7 +2,7 @@ package com.example.fwnojackson.controller;
 
 import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
-import com.example.fwnojackson.model.ProjectEntity;
+import com.example.fwnojackson.model.ProjectComponent;
 import com.example.fwnojackson.service.ProjectsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +56,7 @@ public class ProjectsController {
     }
     @PostMapping("/save")
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<ResponseDto<ProjectEntity>> saveNewEntity(@RequestBody ProjectEntity entity) {
+    public ResponseEntity<ResponseDto<ProjectComponent>> saveNewEntity(@RequestBody ProjectComponent entity) {
         return ResponseEntity.ok(projectsService.addNewEntity(entity));
     }
 }
