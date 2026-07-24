@@ -32,6 +32,10 @@ public abstract class ProjectComponent {
         this.endDate = endDate;
     }
 
+    public ProjectComponent(String uid, String name) {
+        this(uid, name, null, null);
+    }
+
     public String getUid() {
         return uid;
     }
