@@ -25,12 +25,20 @@ public class ProjectComposite extends ProjectComponent {
 
     @Override
     public LocalDate getStartDate() {
-        return null;
+        return children.stream()
+                .map(ProjectComponent::getStartDate)
+                .filter(Objects::nonNull)
+                .min(LocalDate::compareTo)
+                .orElse(null);
     }
 
     @Override
     public LocalDate getEndDate() {
-        return null;
+        return children.stream()
+                .map(ProjectComponent::getStartDate)
+                .filter(Objects::nonNull)
+                .min(LocalDate::compareTo)
+                .orElse(null);
     }
 
     @Override
