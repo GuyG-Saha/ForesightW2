@@ -18,7 +18,6 @@ import java.util.List;
         @JsonSubTypes.Type(value = Task.class, name = "TASK"),
         @JsonSubTypes.Type(value = ProjectComposite.class, name = "PROJECT")
 })
-@Entity
 public abstract class ProjectComponent {
     protected String uid;
     protected String name;
