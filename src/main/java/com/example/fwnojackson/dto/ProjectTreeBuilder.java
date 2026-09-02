@@ -2,6 +2,7 @@ package com.example.fwnojackson.dto;
 
 import com.example.fwnojackson.model.ProjectComponent;
 import com.example.fwnojackson.model.ProjectComposite;
+import com.example.fwnojackson.model.ProjectType;
 import com.example.fwnojackson.model.Task;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -24,9 +25,12 @@ public class ProjectTreeBuilder {
         ));
         Map<String, ProjectComponent> uidToComponent = new HashMap<>();
         ProjectComponent root = null;
+
         // First pass: create instances
         for (ProjectNodeDTO dto : nodes) {
+            boolean hasParent = dto.parentUid != null && !dto.parentUid.isEmpty();
             ProjectComponent component;
+
             if ("TASK".equalsIgnoreCase(dto.type)) {
                 component = new Task(
                         dto.uid,
@@ -35,12 +39,8 @@ public class ProjectTreeBuilder {
                         dto.endDate != null ? LocalDate.parse(dto.endDate) : null
                 );
             } else if ("PROJECT".equalsIgnoreCase(dto.type)) {
-                component = new ProjectComposite(
-                        dto.uid,
-                        dto.name,
-                        dto.startDate != null ? String.valueOf(LocalDate.parse(dto.startDate)) : null,
-                        dto.endDate != null ? String.valueOf(LocalDate.parse(dto.endDate)) : null
-                );
+                ProjectType type = hasParent ? ProjectType.SUBPROJECT : ProjectType.PROJECT;
+                component = new ProjectComposite(dto.uid, dto.name, type);
             } else {
                 throw new IllegalArgumentException("Unknown type: " + dto.type);
             }
