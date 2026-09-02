@@ -14,16 +14,6 @@ public class ProjectComposite extends ProjectComponent {
     }
 
     @Override
-    public String getUid() {
-        return "";
-    }
-
-    @Override
-    public String getName() {
-        return "";
-    }
-
-    @Override
     public LocalDate getStartDate() {
         return children.stream()
                 .map(ProjectComponent::getStartDate)
@@ -39,11 +29,6 @@ public class ProjectComposite extends ProjectComponent {
                 .filter(Objects::nonNull)
                 .max(LocalDate::compareTo)
                 .orElse(null);
-    }
-
-    @Override
-    public ProjectType getType() {
-        return null;
     }
 
     @Override
