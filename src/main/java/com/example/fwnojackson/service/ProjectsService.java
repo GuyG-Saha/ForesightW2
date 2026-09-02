@@ -3,6 +3,8 @@ package com.example.fwnojackson.service;
 import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
 import com.example.fwnojackson.model.ProjectComponent;
+import com.example.fwnojackson.model.ProjectComposite;
+import com.example.fwnojackson.model.ProjectType;
 import com.example.fwnojackson.repository.ProjectEntityRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,48 +15,41 @@ import java.util.*;
 
 @Service
 public class ProjectsService {
-    private final ProjectEntityRepository repository;
-    private final Map<String, ProjectComponent> projects;
-    private final Map<String, ProjectComponent> subprojects;
-    private final Map<String, ProjectComponent> tasks;
-    private final Map<String, List<String>> Uids;
+    private final Map<String, ProjectComponent> byUid;
+    private ProjectComponent root;
 
     @Autowired
     public ProjectsService(ProjectEntityRepository repository) {
-        this.repository = repository;
-        projects = new HashMap<>();
-        subprojects = new HashMap<>();
-        tasks = new HashMap<>();
-        Uids = new HashMap<>();
+        byUid = new HashMap<>();
+
     }
     public ResponseDto<?> loadAllProjectEntities(ProjectsDto dto) {
         if (Objects.nonNull(dto)) {
             for (ProjectComponent entity : dto.getItems()) {
-                if (entity.getType().equalsIgnoreCase("PROJECT")
+                if (entity.getType() == ProjectType.SUBPROJECT
                     && Objects.isNull(entity.getParentUid())) {
-                    projects.put(entity.getUid(), entity);
-                } else if (entity.getType().equalsIgnoreCase("PROJECT")
+                    byUid.put(entity.getUid(), entity);
+                } else if (entity.getType() == ProjectType.PROJECT
                         && Objects.nonNull(entity.getParentUid())) {
                     subprojects.put(entity.getUid(), entity);
                     attachEntityToParent(entity);
-                } else if (entity.getType().equalsIgnoreCase("TASK")) {
+                } else if (entity.getType() == ProjectType.TASK) {
                     tasks.put(entity.getUid(), entity);
                     attachEntityToParent(entity);
                 } else {
                     return new ResponseDto<>("UNKNOWN ENTITY", 0);
                 }
-                repository.save(entity);
             }
-            int count = projects.size() + subprojects.size() + tasks.size();
+            int count = byUid.size() + subprojects.size() + tasks.size();
             return new ResponseDto<>("CREATED", count);
         } else
             return new ResponseDto<>("Bad Request", 0);
     }
     private void attachEntityToParent(ProjectComponent entity) {
-        switch (entity.getType().toUpperCase()) {
+        switch (entity.getType().name().toUpperCase()) {
             case "PROJECT":
-                if (projects.containsKey(entity.getParentUid()))
-                    addChildEntityToList(entity, projects);
+                if (byUid.containsKey(entity.getParentUid()))
+                    addChildEntityToList(entity, byUid);
                 else
                     addChildEntityToList(entity, subprojects);
                 break;
@@ -94,47 +89,30 @@ public class ProjectsService {
                 }
                 index++;
             }
-            ProjectComponent project = projects.containsKey(projectUid) ? projects.get(projectUid) : subprojects.get(projectUid);
+            ProjectComponent project = byUids.containsKey(projectUid) ? byUids.get(projectUid) : subprojects.get(projectUid);
             project.setStartDate(earliest);
             project.setEndDate(latest);
-            repository.save(project);
             return new ResponseDto<ProjectComponent>("Updated start and end date", project, 1);
         } else return new ResponseDto<String>("Invalid or unknown Uid entered", null, 0);
     }
 
-    public ResponseDto<ProjectComponent> addNewEntity(ProjectComponent entity) {
-        if (Objects.nonNull(entity.getParentUid())) {
-            if (entity.getType().equalsIgnoreCase("PROJECT")) {
-                // check that Subproject has a related Task
-                for (String taskId : tasks.keySet()) {
-                    if (tasks.get(taskId).getParentUid().equalsIgnoreCase(entity.getUid())) {
-                        if (projects.containsKey(entity.getParentUid()))
-                            addChildEntityToList(entity, projects);
-                        else
-                            addChildEntityToList(entity, subprojects);
-                        subprojects.put(entity.getUid(), entity);
-                        return new ResponseDto<>("New Subproject added", entity, 1);
-                    }
-                }
-                return new ResponseDto<>("Not found related task", 0);
-            } else if (entity.getType().equalsIgnoreCase("TASK")) {
-                if (subprojects.containsKey(entity.getParentUid())) {
-                    addChildEntityToList(entity, subprojects);
-                } else {
-                    subprojects.put(entity.getParentUid(), null);
-                    addChildEntityToList(entity, subprojects);
-                    // Do I need to force creation of a new Subproject in this case to avoid null?
-                }
-                tasks.put(entity.getUid(), entity);
-                return new ResponseDto<>("New Task added", entity, 1);
-            } else
-                return new ResponseDto<>("Invalid entity type", 0);
-        } else
-            return new ResponseDto<>("Invalid entity type", 0);
+    public ResponseDto<ProjectComponent> addNewEntity(String parentUid, ProjectComponent entity) {
+        ProjectComponent parent = byUid.get(parentUid);
+        if (Objects.isNull(parent)) {
+            return new ResponseDto<>("Parent uid not found", 0);
+        }
+        if (!(parent instanceof ProjectComposite parentComposite)) {
+            return new ResponseDto<>("Cannot add children to a Task", 0);
+        }
+        // ... type-specific legality checks (Subproject-needs-a-Task rule) go here ...
+
+        parentComposite.addChild(entity);
+        byUid.put(entity.getUid(), entity);
+        return new ResponseDto<>("Added", entity, 1);
     }
     public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
         List<Map<String, Object>> projectList = new ArrayList<>();
-        for (Map.Entry<String, ProjectComponent> entry : projects.entrySet()) {
+        for (Map.Entry<String, ProjectComponent> entry : byUid.entrySet()) {
             ProjectComponent project = entry.getValue();
             // Use LinkedHashMap to ensure field order
             Map<String, Object> projectMap = new LinkedHashMap<>();
@@ -181,18 +159,7 @@ public class ProjectsService {
 
 
     public Map<String, ProjectComponent> getProjects() {
-        return projects;
+        return byUid;
     }
 
-    public Map<String, ProjectComponent> getSubprojects() {
-        return subprojects;
-    }
-
-    public Map<String, ProjectComponent> getTasks() {
-        return tasks;
-    }
-
-    public Map<String, List<String>> getUids() {
-        return Uids;
-    }
 }
