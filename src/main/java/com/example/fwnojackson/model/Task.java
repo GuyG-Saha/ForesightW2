@@ -7,7 +7,7 @@ import java.util.List;
 public class Task extends ProjectComponent {
 
     public Task(String uid, String name, LocalDate startDate, LocalDate endDate) {
-        super(uid, name, startDate, endDate);
+        super(uid, name, startDate, endDate, ProjectType.TASK);
     }
 
     @Override

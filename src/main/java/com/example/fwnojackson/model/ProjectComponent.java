@@ -24,16 +24,18 @@ public abstract class ProjectComponent {
     protected String name;
     protected LocalDate startDate;
     protected LocalDate endDate;
+    protected ProjectType type;
 
-    public ProjectComponent(String uid, String name, LocalDate startDate, LocalDate endDate) {
+    public ProjectComponent(String uid, String name, LocalDate startDate, LocalDate endDate, ProjectType type) {
         this.uid = uid;
         this.name = name;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.type = type;
     }
 
-    public ProjectComponent(String uid, String name) {
-        this(uid, name, null, null);
+    public ProjectComponent(String uid, String name, ProjectType type) {
+        this(uid, name, null, null, type);
     }
 
     public String getUid() {
@@ -43,6 +45,7 @@ public abstract class ProjectComponent {
     public String getName() {
         return name;
     }
+    public ProjectType getType() { return type; }
 
     public LocalDate getStartDate() {
         return startDate;

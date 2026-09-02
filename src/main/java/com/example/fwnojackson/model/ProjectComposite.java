@@ -9,8 +9,8 @@ import java.util.Objects;
 public class ProjectComposite extends ProjectComponent {
     private final List<ProjectComponent> children = new ArrayList<>();
 
-    public ProjectComposite(String uid, String name) {
-        super(uid, name);
+    public ProjectComposite(String uid, String name, ProjectType type) {
+        super(uid, name, type);
     }
 
     @Override
