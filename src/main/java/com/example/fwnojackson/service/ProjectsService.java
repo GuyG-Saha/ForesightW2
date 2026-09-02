@@ -104,11 +104,23 @@ public class ProjectsService {
         if (!(parent instanceof ProjectComposite parentComposite)) {
             return new ResponseDto<>("Cannot add children to a Task", 0);
         }
-        // ... type-specific legality checks (Subproject-needs-a-Task rule) go here ...
+        if (entity.getType() == ProjectType.SUBPROJECT && entity.getChildren().isEmpty()) {
+            return new ResponseDto<>("Subproject must be added with at least one related Task", 0);
+        }
 
         parentComposite.addChild(entity);
-        byUid.put(entity.getUid(), entity);
+        registerRecursively(entity);
         return new ResponseDto<>("Added", entity, 1);
+    }
+
+    /** Registers this node and any children it already arrived with (e.g. a
+     Subproject submitted together with a pre-attached Task) into byUid,
+     so later uid-based lookups (add/delete under this node) can find them **/
+    private void registerRecursively(ProjectComponent entity) {
+        byUid.put(entity.getUid(), entity);
+        for (ProjectComponent child : entity.getChildren()) {
+            registerRecursively(child);
+        }
     }
     public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
         List<Map<String, Object>> projectList = new ArrayList<>();
