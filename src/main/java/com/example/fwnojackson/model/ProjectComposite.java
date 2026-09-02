@@ -35,9 +35,9 @@ public class ProjectComposite extends ProjectComponent {
     @Override
     public LocalDate getEndDate() {
         return children.stream()
-                .map(ProjectComponent::getStartDate)
+                .map(ProjectComponent::getEndDate)
                 .filter(Objects::nonNull)
-                .min(LocalDate::compareTo)
+                .max(LocalDate::compareTo)
                 .orElse(null);
     }
 
