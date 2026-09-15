@@ -83,18 +83,55 @@ public class ProjectsService {
         }
 
         parentComposite.addChild(entity);
-        registerRecursively(entity);
-        return new ResponseDto<>("Added", entity, 1);
+        int entitiesCount = registerRecursively(entity, 1);
+        return new ResponseDto<>("Added", entity, entitiesCount);
+    }
+    public ResponseDto<ProjectComponent> removeEntity(String parentUid, String uid) {
+        ProjectComponent target = allProjects.get(uid);
+        if (Objects.isNull(target)) {
+            return new ResponseDto<>("Unknown uid provided", 0);
+        }
+        // Deleting the root itself is a special case: no parent to guard against,
+        // and the whole tree goes with it.
+        if (Objects.equals(uid, root.getUid())) {
+            int entitiesCount = removeRecursively(target);
+            root = null;
+            return new ResponseDto<>("Removed root project", target, entitiesCount);
+        }
+
+        ProjectComponent parent = allProjects.get(parentUid);
+        if (Objects.isNull(parent)) {
+            return new ResponseDto<>("Parent uid not found", 0);
+        }
+        if (!(parent instanceof ProjectComposite parentComposite)) {
+            return new ResponseDto<>("Parent cannot have children", 0);
+        }
+        if (parentComposite.getChildren().size() == 1) {
+            return new ResponseDto<>("Cannot remove the last remaining child", 0);
+        }
+        parentComposite.removeChild(target);
+        int entitiesCount = removeRecursively(target);
+        return new ResponseDto<>("Removed entity", target, entitiesCount);
     }
 
     /** Registers this node and any children it already arrived with (e.g. a
      Subproject submitted together with a pre-attached Task) into allProjects,
      so later uid-based lookups (add/delete under this node) can find them **/
-    private void registerRecursively(ProjectComponent entity) {
+    private int registerRecursively(ProjectComponent entity) {
         allProjects.put(entity.getUid(), entity);
+        int count = 1;
         for (ProjectComponent child : entity.getChildren()) {
-            registerRecursively(child);
+            count += registerRecursively(child);
         }
+        return count;
+    }
+    private int removeRecursively(ProjectComponent entity) {
+        allProjects.remove(entity.getUid());
+        int count = 1;
+        for (ProjectComponent child : entity.getChildren()) {
+            count += removeRecursively(child);
+        }
+        return count;
     }
     public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
         List<Map<String, Object>> projectList = new ArrayList<>();
