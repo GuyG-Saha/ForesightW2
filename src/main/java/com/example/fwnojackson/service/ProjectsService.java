@@ -19,7 +19,7 @@ public class ProjectsService {
     private ProjectComponent root;
 
     @Autowired
-    public ProjectsService(ProjectEntityRepository repository) {
+    public ProjectsService() {
         allProjects = new HashMap<>();
 
     }
@@ -68,32 +68,6 @@ public class ProjectsService {
             childrenUids.add(entity.getUid());
             Uids.put(entity.getParentUid(), childrenUids);
         }
-    }
-
-    public ResponseDto<?> setProjectsStartAndEndDates(String projectUid) {
-        LocalDate earliest = LocalDate.MAX;
-        LocalDate latest = LocalDate.MIN;
-        int index = 0;
-        if (Uids.containsKey(projectUid)) {
-            List<String> uidsToIterate = Uids.get(projectUid);
-            while (index < uidsToIterate.size()) {
-                String subUid = uidsToIterate.get(index);
-                if (tasks.containsKey(subUid)) {
-                    if (tasks.get(subUid).getStartDate().isBefore(earliest))
-                        earliest = tasks.get(subUid).getStartDate();
-                    if (tasks.get(subUid).getEndDate().isAfter(latest))
-                        latest = tasks.get(subUid).getEndDate();
-                } else if (subprojects.containsKey(subUid)) {
-                    System.out.println(subUid + " is not a Task. Checking through Subprojects...");
-                    uidsToIterate.addAll(Uids.get(subUid));
-                }
-                index++;
-            }
-            ProjectComponent project = byUids.containsKey(projectUid) ? byUids.get(projectUid) : subprojects.get(projectUid);
-            project.setStartDate(earliest);
-            project.setEndDate(latest);
-            return new ResponseDto<ProjectComponent>("Updated start and end date", project, 1);
-        } else return new ResponseDto<String>("Invalid or unknown Uid entered", null, 0);
     }
 
     public ResponseDto<ProjectComponent> addNewEntity(String parentUid, ProjectComponent entity) {
