@@ -15,12 +15,12 @@ import java.util.*;
 
 @Service
 public class ProjectsService {
-    private final Map<String, ProjectComponent> byUid;
+    private final Map<String, ProjectComponent> allProjects;
     private ProjectComponent root;
 
     @Autowired
     public ProjectsService(ProjectEntityRepository repository) {
-        byUid = new HashMap<>();
+        allProjects = new HashMap<>();
 
     }
     public ResponseDto<?> loadAllProjectEntities(ProjectsDto dto) {
@@ -28,7 +28,7 @@ public class ProjectsService {
             for (ProjectComponent entity : dto.getItems()) {
                 if (entity.getType() == ProjectType.SUBPROJECT
                     && Objects.isNull(entity.getParentUid())) {
-                    byUid.put(entity.getUid(), entity);
+                    allProjects.put(entity.getUid(), entity);
                 } else if (entity.getType() == ProjectType.PROJECT
                         && Objects.nonNull(entity.getParentUid())) {
                     subprojects.put(entity.getUid(), entity);
@@ -40,7 +40,7 @@ public class ProjectsService {
                     return new ResponseDto<>("UNKNOWN ENTITY", 0);
                 }
             }
-            int count = byUid.size() + subprojects.size() + tasks.size();
+            int count = allProjects.size() + subprojects.size() + tasks.size();
             return new ResponseDto<>("CREATED", count);
         } else
             return new ResponseDto<>("Bad Request", 0);
@@ -48,8 +48,8 @@ public class ProjectsService {
     private void attachEntityToParent(ProjectComponent entity) {
         switch (entity.getType().name().toUpperCase()) {
             case "PROJECT":
-                if (byUid.containsKey(entity.getParentUid()))
-                    addChildEntityToList(entity, byUid);
+                if (allProjects.containsKey(entity.getParentUid()))
+                    addChildEntityToList(entity, allProjects);
                 else
                     addChildEntityToList(entity, subprojects);
                 break;
@@ -97,7 +97,7 @@ public class ProjectsService {
     }
 
     public ResponseDto<ProjectComponent> addNewEntity(String parentUid, ProjectComponent entity) {
-        ProjectComponent parent = byUid.get(parentUid);
+        ProjectComponent parent = allProjects.get(parentUid);
         if (Objects.isNull(parent)) {
             return new ResponseDto<>("Parent uid not found", 0);
         }
@@ -114,17 +114,17 @@ public class ProjectsService {
     }
 
     /** Registers this node and any children it already arrived with (e.g. a
-     Subproject submitted together with a pre-attached Task) into byUid,
+     Subproject submitted together with a pre-attached Task) into allProjects,
      so later uid-based lookups (add/delete under this node) can find them **/
     private void registerRecursively(ProjectComponent entity) {
-        byUid.put(entity.getUid(), entity);
+        allProjects.put(entity.getUid(), entity);
         for (ProjectComponent child : entity.getChildren()) {
             registerRecursively(child);
         }
     }
     public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
         List<Map<String, Object>> projectList = new ArrayList<>();
-        for (Map.Entry<String, ProjectComponent> entry : byUid.entrySet()) {
+        for (Map.Entry<String, ProjectComponent> entry : allProjects.entrySet()) {
             ProjectComponent project = entry.getValue();
             // Use LinkedHashMap to ensure field order
             Map<String, Object> projectMap = new LinkedHashMap<>();
@@ -171,7 +171,7 @@ public class ProjectsService {
 
 
     public Map<String, ProjectComponent> getProjects() {
-        return byUid;
+        return allProjects;
     }
 
 }
