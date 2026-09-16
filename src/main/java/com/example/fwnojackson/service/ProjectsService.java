@@ -109,6 +109,9 @@ public class ProjectsService {
         if (parentComposite.getChildren().size() == 1) {
             return new ResponseDto<>("Cannot remove the last remaining child", 0);
         }
+        if (!parentComposite.removeChild(target)) {
+            return new ResponseDto<>("Given uid is not a child of the specified parent", 0);
+        }
         parentComposite.removeChild(target);
         int entitiesCount = removeRecursively(target);
         return new ResponseDto<>("Removed entity", target, entitiesCount);

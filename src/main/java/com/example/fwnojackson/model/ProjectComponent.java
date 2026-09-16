@@ -56,7 +56,7 @@ public abstract class ProjectComponent {
 
     // Composite-related methods
     public abstract void addChild(ProjectComponent child);
-    public abstract void removeChild(ProjectComponent child);
+    public abstract boolean removeChild(ProjectComponent child);
     public abstract List<ProjectComponent> getChildren();
 
     // Utility method (can be overridden or used recursively)

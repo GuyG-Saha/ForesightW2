@@ -16,7 +16,7 @@ public class Task extends ProjectComponent {
     }
 
     @Override
-    public void removeChild(ProjectComponent child) {
+    public boolean removeChild(ProjectComponent child) {
         throw new UnsupportedOperationException("Cannot remove child from a Task (Leaf).");
     }
 

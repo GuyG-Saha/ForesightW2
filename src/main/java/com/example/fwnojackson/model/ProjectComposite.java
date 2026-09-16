@@ -37,8 +37,8 @@ public class ProjectComposite extends ProjectComponent {
     }
 
     @Override
-    public void removeChild(ProjectComponent component) {
-        children.remove(component);
+    public boolean removeChild(ProjectComponent component) {
+        return children.remove(component);
     }
 
     @Override
