@@ -68,5 +68,49 @@ public class ProjectTreeBuilder {
 
         return root;
     }
+    public static ProjectComponent buildTree(List<ProjectNodeDTO> nodes) {
+        Map<String, ProjectComponent> uidToComponent = new HashMap<>();
+        ProjectComponent root = null;
+
+        // First pass: create instances
+        for (ProjectNodeDTO dto : nodes) {
+            boolean hasParent = dto.parentUid != null && !dto.parentUid.isEmpty();
+            ProjectComponent component;
+
+            if ("TASK".equalsIgnoreCase(dto.type)) {
+                component = new Task(
+                        dto.uid,
+                        dto.name,
+                        dto.startDate != null ? LocalDate.parse(dto.startDate) : null,
+                        dto.endDate != null ? LocalDate.parse(dto.endDate) : null
+                );
+            } else if ("PROJECT".equalsIgnoreCase(dto.type)) {
+                ProjectType type = hasParent ? ProjectType.SUBPROJECT : ProjectType.PROJECT;
+                component = new ProjectComposite(dto.uid, dto.name, type);
+            } else {
+                throw new IllegalArgumentException("Unknown type: " + dto.type);
+            }
+
+            uidToComponent.put(dto.uid, component);
+        }
+
+        // Second pass: wire up hierarchy
+        for (ProjectNodeDTO dto : nodes) {
+            if (dto.parentUid == null || dto.parentUid.isEmpty()) {
+                root = uidToComponent.get(dto.uid);
+            } else {
+                ProjectComponent parent = uidToComponent.get(dto.parentUid);
+                if (parent instanceof ProjectComposite composite) {
+                    composite.addChild(uidToComponent.get(dto.uid));
+                } else {
+                    throw new IllegalStateException("Parent is not a composite: " + dto.parentUid);
+                }
+            }
+        }
+        if (root == null) {
+            throw new IllegalStateException("No root node found (node without parentUid)");
+        }
+        return root;
+    }
 }
 
