@@ -1,5 +1,6 @@
 package com.example.fwnojackson.service;
 
+import com.example.fwnojackson.dto.ProjectTreeBuilder;
 import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
 import com.example.fwnojackson.model.ProjectComponent;
@@ -24,26 +25,12 @@ public class ProjectsService {
 
     }
     public ResponseDto<?> loadAllProjectEntities(ProjectsDto dto) {
-        if (Objects.nonNull(dto)) {
-            for (ProjectComponent entity : dto.getItems()) {
-                if (entity.getType() == ProjectType.SUBPROJECT
-                    && Objects.isNull(entity.getParentUid())) {
-                    allProjects.put(entity.getUid(), entity);
-                } else if (entity.getType() == ProjectType.PROJECT
-                        && Objects.nonNull(entity.getParentUid())) {
-                    subprojects.put(entity.getUid(), entity);
-                    attachEntityToParent(entity);
-                } else if (entity.getType() == ProjectType.TASK) {
-                    tasks.put(entity.getUid(), entity);
-                    attachEntityToParent(entity);
-                } else {
-                    return new ResponseDto<>("UNKNOWN ENTITY", 0);
-                }
-            }
-            int count = allProjects.size() + subprojects.size() + tasks.size();
-            return new ResponseDto<>("CREATED", count);
-        } else
+        if (Objects.isNull(dto) || dto.getItems() == null || dto.getItems().isEmpty()) {
             return new ResponseDto<>("Bad Request", 0);
+        }
+        root = ProjectTreeBuilder.buildTree(dto.getItems());
+        int count = registerRecursively(root);
+        return new ResponseDto<>("CREATED", count);
     }
     private void attachEntityToParent(ProjectComponent entity) {
         switch (entity.getType().name().toUpperCase()) {

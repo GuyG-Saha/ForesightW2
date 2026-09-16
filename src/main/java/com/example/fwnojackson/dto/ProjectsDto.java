@@ -6,20 +6,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ProjectsDto {
-    private List<ProjectComponent> items;
+    private List<ProjectNodeDTO> items;
 
     public ProjectsDto() {
-        items = new ArrayList<ProjectComponent>();
+        items = new ArrayList<ProjectNodeDTO>();
     }
-    public ProjectsDto(List<ProjectComponent> items) {
+    public ProjectsDto(List<ProjectNodeDTO> items) {
         this.items = items;
     }
 
-    public List<ProjectComponent> getItems() {
+    public List<ProjectNodeDTO> getItems() {
         return items;
     }
 
-    public void setItems(List<ProjectComponent> items) {
+    public void setItems(List<ProjectNodeDTO> items) {
         this.items = items;
     }
 }
