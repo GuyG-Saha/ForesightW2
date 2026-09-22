@@ -75,7 +75,6 @@ public class ProjectsService {
         if (!parentComposite.removeChild(target)) {
             return new ResponseDto<>("Given uid is not a child of the specified parent", 0);
         }
-        parentComposite.removeChild(target);
         int entitiesCount = removeRecursively(target);
         return new ResponseDto<>("Removed entity", target, entitiesCount);
     }
