@@ -32,30 +32,6 @@ public class ProjectsService {
         int count = registerRecursively(root);
         return new ResponseDto<>("CREATED", count);
     }
-    private void attachEntityToParent(ProjectComponent entity) {
-        switch (entity.getType().name().toUpperCase()) {
-            case "PROJECT":
-                if (allProjects.containsKey(entity.getParentUid()))
-                    addChildEntityToList(entity, allProjects);
-                else
-                    addChildEntityToList(entity, subprojects);
-                break;
-            case "TASK":
-                addChildEntityToList(entity, subprojects);
-                break;
-        }
-    }
-    private void addChildEntityToList(ProjectComponent entity, Map<String, ProjectComponent> parentsMap) {
-        if (parentsMap.containsKey(entity.getParentUid())
-                && Objects.nonNull(Uids.get(entity.getParentUid()))) {
-            Uids.get(entity.getParentUid()).add(entity.getUid());
-        } else if (parentsMap.containsKey(entity.getParentUid())
-                && Objects.isNull(Uids.get(entity.getParentUid()))) {
-            ArrayList<String> childrenUids = new ArrayList<>();
-            childrenUids.add(entity.getUid());
-            Uids.put(entity.getParentUid(), childrenUids);
-        }
-    }
 
     public ResponseDto<ProjectComponent> addNewEntity(String parentUid, ProjectComponent entity) {
         ProjectComponent parent = allProjects.get(parentUid);
@@ -70,7 +46,7 @@ public class ProjectsService {
         }
 
         parentComposite.addChild(entity);
-        int entitiesCount = registerRecursively(entity, 1);
+        int entitiesCount = registerRecursively(entity);
         return new ResponseDto<>("Added", entity, entitiesCount);
     }
     public ResponseDto<ProjectComponent> removeEntity(String parentUid, String uid) {
@@ -141,7 +117,7 @@ public class ProjectsService {
     }
     private List<Map<String, Object>> serializeChildren(String parentUid, Map<String, ProjectComponent> subprojects, Map<String, ProjectComponent> tasks) throws JsonProcessingException {
         List<Map<String, Object>> childrenList = new ArrayList<>();
-        List<String> childUids = Uids.get(parentUid);
+        List<String> childUids = allProjects.get(parentUid).getChildren();
         if (Objects.isNull(childUids) || childUids.isEmpty()) {
             return childrenList;
         }
