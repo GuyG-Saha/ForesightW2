@@ -100,48 +100,12 @@ public class ProjectsService {
     }
     public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
         List<Map<String, Object>> projectList = new ArrayList<>();
-        for (Map.Entry<String, ProjectComponent> entry : allProjects.entrySet()) {
-            ProjectComponent project = entry.getValue();
-            // Use LinkedHashMap to ensure field order
-            Map<String, Object> projectMap = new LinkedHashMap<>();
-            projectMap.put("project", project.serializeProject());
-            // Serialize both subprojects and tasks for the current project
-            List<Map<String, Object>> children = serializeChildren(project.getUid(), subprojects, tasks);
-            if (!children.isEmpty()) {
-                projectMap.put("children", children);
-            }
-            projectList.add(projectMap);
-        }
+
         return projectList;
     }
     private List<Map<String, Object>> serializeChildren(String parentUid, Map<String, ProjectComponent> subprojects, Map<String, ProjectComponent> tasks) throws JsonProcessingException {
         List<Map<String, Object>> childrenList = new ArrayList<>();
-        List<String> childUids = allProjects.get(parentUid).getChildren();
-        if (Objects.isNull(childUids) || childUids.isEmpty()) {
-            return childrenList;
-        }
-        for (String childUid : childUids) {
-            ProjectComponent childProject = subprojects.get(childUid);
-            if (childProject != null) {
-                // Create a LinkedHashMap to maintain field order for subprojects
-                Map<String, Object> childMap = new LinkedHashMap<>();
-                childMap.put("subproject", childProject.serializeProject());
-                // Recursively serialize grandchildren (both subprojects and tasks)
-                List<Map<String, Object>> grandChildren = serializeChildren(childUid, subprojects, tasks);
-                if (!grandChildren.isEmpty()) {
-                    childMap.put("children", grandChildren); // Add grandchildren if present
-                }
-                childrenList.add(childMap);
-            }
-            // Handle tasks
-            ProjectComponent task = tasks.get(childUid);
-            if (task != null) {
-                Map<String, Object> taskMap = new LinkedHashMap<>();
-                taskMap.put("task", task.serializeProject());
-                // No further recursion for tasks (they have no children) so just add them
-                childrenList.add(taskMap);
-            }
-        }
+
         return childrenList;
     }
 

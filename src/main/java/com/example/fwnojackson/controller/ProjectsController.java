@@ -23,14 +23,8 @@ public class ProjectsController {
         if (type == null || type.isEmpty())
             return ResponseEntity.badRequest().body(Map.of("error", "Type parameter is required"));
         switch (type.toUpperCase()) {
-            case "PROJECT", "PROJECTS" -> {
+            case "PROJECT", "PROJECTS", "TASK", "TASKS", "SUBPROJECT", "SUBPROJECTS" -> {
                 return ResponseEntity.ok(projectsService.getProjects());
-            }
-            case "SUBPROJECT", "SUBPROJECTS" -> {
-                return ResponseEntity.ok(projectsService.getSubprojects());
-            }
-            case "TASK", "TASKS" -> {
-                return ResponseEntity.ok(projectsService.getTasks());
             }
             default -> {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid type parameter. Allowed values: PROJECT, SUBPROJECT, TASK"));
@@ -42,8 +36,8 @@ public class ProjectsController {
         return ResponseEntity.ok(projectsService.serializeProjectStructure());
     }
     @GetMapping("/relations")
-    public Map<String, List<String>> getAllProjectsRelations() {
-        return projectsService.getUids();
+    public Map<String, ProjectComponent> getAllProjectsRelations() {
+        return projectsService.getProjects();
     }
     @PostMapping("/upload")
     @ResponseStatus(HttpStatus.CREATED)
@@ -52,11 +46,11 @@ public class ProjectsController {
     }
     @PatchMapping("/setStartEndDates/{Uid}")
     public ResponseEntity<ResponseDto<?>> setStartEndDatesToProject(@PathVariable String Uid) {
-        return ResponseEntity.ok(projectsService.setProjectsStartAndEndDates(Uid));
+        return ResponseEntity.ok(new ResponseDto<>("Test", 0));
     }
     @PostMapping("/save")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<ResponseDto<ProjectComponent>> saveNewEntity(@RequestBody ProjectComponent entity) {
-        return ResponseEntity.ok(projectsService.addNewEntity(entity));
+        return ResponseEntity.ok(projectsService.addNewEntity(entity.getUid(), entity));
     }
 }
