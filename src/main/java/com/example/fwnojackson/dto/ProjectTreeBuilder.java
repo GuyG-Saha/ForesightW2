@@ -50,10 +50,14 @@ public class ProjectTreeBuilder {
 
             uidToComponent.put(dto.uid, component);
         }
-
         // Second pass: wire up hierarchy
         for (ProjectNodeDTO dto : nodes) {
             if (dto.parentUid == null || dto.parentUid.isEmpty()) {
+                if (root != null) {
+                    throw new IllegalStateException(
+                            "Multiple root nodes found: " + root.getUid() + " and " + dto.uid
+                    );
+                }
                 root = uidToComponent.get(dto.uid);
             } else {
                 ProjectComponent parent = uidToComponent.get(dto.parentUid);
