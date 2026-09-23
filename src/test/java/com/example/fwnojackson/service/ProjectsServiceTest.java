@@ -1,21 +1,29 @@
 package com.example.fwnojackson.service;
 
 import com.example.fwnojackson.Inputs;
+import com.example.fwnojackson.dto.ProjectNodeDTO;
 import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
 import com.example.fwnojackson.model.ProjectComponent;
 import com.example.fwnojackson.model.ProjectComposite;
 import com.example.fwnojackson.model.ProjectType;
+import com.example.fwnojackson.model.Task;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ProjectsServiceTest {
     private ProjectsService service;
     private ObjectMapper mapper;
+    private final String BARE_SUBPROJECT_MSG = "Subproject must be added with at least one related Task";
+    private final String CANNOT_REMOVE_CHILD_MSG = "Cannot remove the last remaining child";
+    private final String WRONG_CHILD_MSG = "Given uid is not a child of the specified parent";
 
     @BeforeEach
     void setUp() {
@@ -52,6 +60,68 @@ class ProjectsServiceTest {
         assertThat(service.getProjects()).hasSize(expectedNodeCount);
     }
 
+    @Test
+    void loadAllProjectEntities_rejectsEmptyPayload() {
+        // assert the "Bad Request" branch — no tree/root should be created.
+        ProjectsDto dto = new ProjectsDto();
+        ResponseDto<?> response = service.loadAllProjectEntities(dto);
+        assertThat(response.getMessage()).isEqualTo("Bad Request");
+        assertThat(response.getEntitiesCount()).isEqualTo(0);
+        assertThat(service.getProjects()).hasSize(0);
+    }
+
+    @Test
+    void addNewEntity_addsTaskUnderExistingSubproject() throws Exception {
+        // call addNewEntity, assert entitiesCount == 1 and the parent's
+        // getChildren() now includes it.
+        ProjectsDto minimalTree = rootOnlyTree();
+        service.loadAllProjectEntities(minimalTree);
+        Task newTask = new Task("tt1", "New Leaf Task",
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 2, 1));
+        ResponseDto<ProjectComponent> response = service.addNewEntity("p1", newTask);
+        assertThat(response.getEntitiesCount()).isEqualTo(1);
+        assertThat(service.getProjects().size()).isEqualTo(2);
+        assertThat(service.getProjects().get("p1").getChildren()).contains(newTask);
+    }
+
+    @Test
+    void addNewEntity_rejectsSubprojectWithNoChildren() {
+        // assert addNewEntity rejects it with the "must be added with at
+        // least one related Task" message.
+        ProjectsDto minimalTree = rootOnlyTree();
+        service.loadAllProjectEntities(minimalTree);
+        ProjectComposite subproject = new ProjectComposite("sp1", "New Subproject with no Task",
+                ProjectType.SUBPROJECT);
+        ResponseDto<ProjectComponent> response = service.addNewEntity("p1", subproject);
+        assertThat(response.getMessage()).isEqualTo(BARE_SUBPROJECT_MSG);
+    }
+
+    @Test
+    void removeEntity_rejectsRemovingTheLastRemainingChild() {
+        // assert removeEntity rejects it rather than orphaning the parent.
+        ProjectsDto minimalTree = rootOnlyTree();
+        service.loadAllProjectEntities(minimalTree);
+        Task newTask = new Task("tt1", "New Leaf Task",
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 2, 1));
+        service.addNewEntity("p1", newTask);
+        ResponseDto<ProjectComponent> response = service.removeEntity("p1", "tt1");
+        assertThat(response.getMessage()).isEqualTo(CANNOT_REMOVE_CHILD_MSG);
+
+    }
+
+    @Test
+    void removeEntity_rejectsWhenParentUidDoesNotMatchTarget() throws Exception {
+        // pass a parentUid that's valid but isn't target's real parent,
+        // assert removeEntity rejects it rather than silently detaching nothing.
+        ProjectsDto dto = loadFixture();
+        service.loadAllProjectEntities(dto);
+        String validParentUid = "690ajgop520";
+        String wrongChildUid = "270tmqyb719";
+        ResponseDto<ProjectComponent> response = service.removeEntity(validParentUid, wrongChildUid);
+        assertThat(response.getMessage()).isEqualTo(WRONG_CHILD_MSG);
+    }
     private void printTree(ProjectComponent node, String indent) {
         System.out.println(indent + "- [" + node.getType() + "] " + node.getName()
                 + " (" + node.getUid() + ") start=" + node.getStartDate() + " end=" + node.getEndDate());
@@ -59,37 +129,11 @@ class ProjectsServiceTest {
             printTree(child, indent + "  ");
         }
     }
-    @Test
-    void loadAllProjectEntities_rejectsEmptyPayload() {
-        // TODO: call service.loadAllProjectEntities(new ProjectsDto()) (or null),
-        // assert the "Bad Request" branch — no tree/root should be created.
-    }
-
-    @Test
-    void addNewEntity_addsTaskUnderExistingSubproject() throws Exception {
-        // TODO: loadFixture() + loadAllProjectEntities() first to get a populated tree,
-        // pick a known uid from the fixture as parentUid, build a new Task,
-        // call addNewEntity, assert entitiesCount == 1 and the parent's
-        // getChildren() now includes it.
-    }
-
-    @Test
-    void addNewEntity_rejectsSubprojectWithNoChildren() {
-        // TODO: construct a bare ProjectComposite (no children attached),
-        // assert addNewEntity rejects it with the "must be added with at
-        // least one related Task" message.
-    }
-
-    @Test
-    void removeEntity_rejectsRemovingTheLastRemainingChild() {
-        // TODO: find (or construct) a parent with exactly one child,
-        // assert removeEntity rejects it rather than orphaning the parent.
-    }
-
-    @Test
-    void removeEntity_rejectsWhenParentUidDoesNotMatchTarget() {
-        // TODO: this is the "caller lied about parentUid" case we discussed —
-        // pass a parentUid that's valid but isn't target's real parent,
-        // assert removeEntity rejects it rather than silently detaching nothing.
+    private ProjectsDto rootOnlyTree() {
+        ProjectNodeDTO root = new ProjectNodeDTO();
+        root.uid = "p1";
+        root.name = "Root Project";
+        root.type = "PROJECT";
+        return new ProjectsDto(List.of(root));
     }
 }
