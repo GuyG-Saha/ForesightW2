@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ProjectsService {
@@ -98,10 +99,29 @@ public class ProjectsService {
         }
         return count;
     }
-    public List<Map<String, Object>> serializeProjectStructure() throws JsonProcessingException {
-        List<Map<String, Object>> projectList = new ArrayList<>();
+    public Map<String, Object> serializeProjectStructure() {
+        if (Objects.nonNull(root)) {
+            Map<String, Object> rootSerialized = serializeNode(root, null);
+            return rootSerialized;
+        } else {
+            throw new IllegalArgumentException("Cannot serialize projects tree structure when the root project is null");
+        }
+    }
+    private Map<String, Object> serializeNode(ProjectComponent node, String parentUid) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("uid", node.getUid());
+        map.put("name", node.getName());
+        map.put("type", node.getType());
+        map.put("startDate", node.getStartDate());
+        map.put("endDate", node.getEndDate());
+        map.put("parentUid", parentUid);
 
-        return projectList;
+        if (node instanceof ProjectComposite composite) {
+            map.put("children", composite.getChildren().stream()
+                    .map(child -> serializeNode(child, node.getUid()))
+                    .collect(Collectors.toList()));
+        }
+        return map;
     }
     private List<Map<String, Object>> serializeChildren(String parentUid, Map<String, ProjectComponent> subprojects, Map<String, ProjectComponent> tasks) throws JsonProcessingException {
         List<Map<String, Object>> childrenList = new ArrayList<>();

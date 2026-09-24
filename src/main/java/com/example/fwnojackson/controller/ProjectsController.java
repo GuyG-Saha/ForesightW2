@@ -32,7 +32,7 @@ public class ProjectsController {
         }
     }
     @GetMapping("/projects/hierarchy")
-    public ResponseEntity<List<Map<String, Object>>> getProjectHierarchyAsJson() throws JsonProcessingException {
+    public ResponseEntity<Map<String, Object>> getProjectHierarchyAsJson() {
         return ResponseEntity.ok(projectsService.serializeProjectStructure());
     }
     @GetMapping("/relations")

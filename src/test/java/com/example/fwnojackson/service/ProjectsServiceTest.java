@@ -2,6 +2,7 @@ package com.example.fwnojackson.service;
 
 import com.example.fwnojackson.Inputs;
 import com.example.fwnojackson.dto.ProjectNodeDTO;
+import com.example.fwnojackson.dto.ProjectTreeBuilder;
 import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
 import com.example.fwnojackson.model.ProjectComponent;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 class ProjectsServiceTest {
     private ProjectsService service;
@@ -121,6 +123,13 @@ class ProjectsServiceTest {
         String wrongChildUid = "270tmqyb719";
         ResponseDto<ProjectComponent> response = service.removeEntity(validParentUid, wrongChildUid);
         assertThat(response.getMessage()).isEqualTo(WRONG_CHILD_MSG);
+    }
+    @Test
+    void loadAllProjectEntities_acceptsRootWithNoChildrenYet() {
+        ResponseDto<?> response = service.loadAllProjectEntities(rootOnlyTree());
+        assertThat(response.getMessage()).isEqualTo("CREATED");
+        assertThat(response.getEntitiesCount()).isEqualTo(1);
+        assertThat(service.getProjects()).containsOnlyKeys("p1");
     }
     private void printTree(ProjectComponent node, String indent) {
         System.out.println(indent + "- [" + node.getType() + "] " + node.getName()
