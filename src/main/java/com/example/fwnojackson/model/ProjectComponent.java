@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @JsonTypeInfo(
@@ -61,4 +62,17 @@ public abstract class ProjectComponent {
 
     // Utility method (can be overridden or used recursively)
     public abstract void printStructure(String indent);
+    public double getCompletionStatus(LocalDate date) {
+        LocalDate start = getStartDate();
+        LocalDate end = getEndDate();
+        if (start == null || end == null) {
+            return 0.0;       // e.g. a composite with no dated descendants
+        }
+        long totalDays = ChronoUnit.DAYS.between(start, end) + 1;
+        long elapsedDays = ChronoUnit.DAYS.between(start, date);
+
+        if (elapsedDays <= 0) return 0.0;
+        if (elapsedDays >= totalDays) return 100.0;
+        return elapsedDays * 100.0 / totalDays;          // multiply first to avoid 0.1*100-style float noise
+    }
 }
