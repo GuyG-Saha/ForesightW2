@@ -214,6 +214,10 @@ Rather than wrapping individual controller methods in `try/catch`,
 and by `ProjectsService` for an empty hierarchy) to `400 Bad Request`
 uniformly, once, for every endpoint that can raise them.
 
+**The payoff: thin methods.** 
+The non-trivial logic lives in exactly one place each: date roll-up in ProjectComposite.getStartDate()/getEndDate(), the completion formula in ProjectComponent.getCompletionStatus(), and hierarchy output in the recursive serializeNode(). Everything above them, such as the service methods and controller endpoints, is a lookup and a single delegating call. Because every node answers for itself, the same call works on a Task, a Subproject or a Project at any depth, with no type branching anywhere. Changing a task’s dates, or adding or removing a node, needs no recalculation step, since ancestors derive their dates on read.
+
+
 ## Testing
 
 This branch also introduced the project's first real unit tests (JUnit 5 +
@@ -235,17 +239,12 @@ dependency needed), replacing what had previously been manual testing only.
 
 ## Current status
 
-Working and tested: uploading/parsing a project tree, adding a node under a
-given parent, removing a node (with both guard rules), and serializing the
-full hierarchy back to JSON.
+Working and tested: uploading and parsing a project tree, adding a node under a given parent, removing a node (with both guard rules), updating a Task’s dates, completion % for any node on any date, and serializing the full hierarchy to JSON.
 
-**Not yet implemented on this branch:**
-- Completion percentage calculation (for a given date).
-- `ProjectsController` still has several endpoints left over from an
-  earlier, incompatible design (flat type-segregated maps, a `parentUid`
-  based lookup) that don't yet reflect the current service — a full
-  controller rewrite is the next planned step.
-- Swagger/OpenAPI documentation.
+Not yet done on this branch:
+
+ProjectsController still has endpoints left over from the earlier flat-map design, which need a rewrite against the current service. That includes exposing removeEntity.
+Swagger/OpenAPI documentation.
 
 ## A note on when *not* to reach for Composite
 
