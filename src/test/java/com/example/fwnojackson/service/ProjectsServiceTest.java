@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -294,6 +296,37 @@ class ProjectsServiceTest {
         assertThat(response.getMessage()).isEqualTo(START_DATE_MSG);
         assertThat(service.getProjects().get("t1").getStartDate()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(service.getProjects().get("t1").getEndDate()).isEqualTo(LocalDate.of(2026, 1, 10));
+    }
+    @ParameterizedTest
+    @CsvSource({
+            "2020-11-06, 0.0",     // not started yet
+            "2021-10-02, 0.0",     // just started
+            "2021-10-03, 10.0",
+            "2021-10-11, 90.0",
+            "2021-10-12, 100.0"    // finished
+    })
+    void getCompletionStatus_matchesAssignmentExamples(LocalDate date, double expected) {
+        service.loadAllProjectEntities(new ProjectsDto(List.of(
+                node("p1", "Root", "PROJECT", null, null, null),
+                node("t1", "Task", "TASK", "p1", "2021-10-02", "2021-10-11"))));
+
+        assertThat(service.getCompletionStatus("t1", date)).isEqualTo(expected);
+    }
+    @Test
+    void getCompletionStatus_projectUsesRolledUpSpan() {
+        service.loadAllProjectEntities(new ProjectsDto(List.of(
+                node("p1", "Root", "PROJECT", null, null, null),
+                node("t1", "First half", "TASK", "p1", "2021-10-01", "2021-10-10"),
+                node("t2", "Second half", "TASK", "p1", "2021-10-11", "2021-10-20"))));
+
+        // root spans Oct 1..20 (20 days); on Oct 11, 10 days have elapsed
+        assertThat(service.getCompletionStatus("p1", LocalDate.of(2021, 10, 11))).isEqualTo(50.0);
+    }
+    @Test
+    void getCompletionStatus_rejectsUnknownUid() {
+        assertThatThrownBy(() -> service.getCompletionStatus("nope", LocalDate.of(2021, 10, 3)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unknown uid");
     }
     @SuppressWarnings("unchecked")
     private int countNodes(Map<String, Object> node) {
