@@ -6,7 +6,7 @@ import com.example.fwnojackson.dto.ResponseDto;
 import com.example.fwnojackson.model.ProjectComponent;
 import com.example.fwnojackson.model.ProjectComposite;
 import com.example.fwnojackson.model.ProjectType;
-import com.example.fwnojackson.repository.ProjectEntityRepository;
+import com.example.fwnojackson.model.Task;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -106,6 +106,24 @@ public class ProjectsService {
         } else {
             throw new IllegalArgumentException("Cannot serialize projects tree structure when the root project is null");
         }
+    }
+    public ResponseDto<ProjectComponent> updateTaskDates(String uid, LocalDate startDate, LocalDate endDate) {
+        ProjectComponent node = allProjects.get(uid);
+        if (Objects.isNull(node)) {
+            return new ResponseDto<>("Unknown uid provided", 0);
+        }
+        if (!(node instanceof Task task)) {
+            return new ResponseDto<>("Only a Task's dates can be updated", 0);
+        }
+        if (Objects.isNull(startDate) || Objects.isNull(endDate)) {
+            return new ResponseDto<>("Start and end dates are required", 0);
+        }
+        if (startDate.isAfter(endDate)) {
+            return new ResponseDto<>("Start date cannot be after end date", 0);
+        }
+        task.setStartDate(startDate);
+        task.setEndDate(endDate);
+        return new ResponseDto<>("Updated", task, 1);
     }
     private Map<String, Object> serializeNode(ProjectComponent node, String parentUid) {
         Map<String, Object> map = new LinkedHashMap<>();

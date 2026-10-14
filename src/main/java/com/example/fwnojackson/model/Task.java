@@ -29,4 +29,11 @@ public class Task extends ProjectComponent {
     public void printStructure(String indent) {
         System.out.println(indent + "Task: " + name + " (" + uid + ")");
     }
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
 }
