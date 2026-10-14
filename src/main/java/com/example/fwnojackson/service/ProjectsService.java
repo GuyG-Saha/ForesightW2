@@ -125,6 +125,13 @@ public class ProjectsService {
         task.setEndDate(endDate);
         return new ResponseDto<>("Updated", task, 1);
     }
+    public double getCompletionStatus(String uid, LocalDate date) {
+        ProjectComponent node = allProjects.get(uid);
+        if (Objects.isNull(node)) {
+            throw new IllegalArgumentException("Unknown uid provided: " + uid);
+        }
+        return node.getCompletionStatus(date);
+    }
     private Map<String, Object> serializeNode(ProjectComponent node, String parentUid) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("uid", node.getUid());

@@ -6,6 +6,7 @@ import com.example.fwnojackson.model.ProjectComponent;
 import com.example.fwnojackson.service.ProjectsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api")
@@ -51,6 +53,14 @@ public class ProjectsController {
     public ResponseEntity<ResponseDto<ProjectComponent>> updateTaskDates(
             @PathVariable String uid, @RequestBody UpdateDatesRequest request) {
         return ResponseEntity.ok(projectsService.updateTaskDates(uid, request.startDate(), request.endDate()));
+    }
+    @GetMapping("/projects/{uid}/completion")
+    public ResponseEntity<Double> getCompletionStatus(
+            @PathVariable String uid,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date) {
+        LocalDate effectiveDate = Objects.requireNonNullElseGet(date, LocalDate::now);
+        return ResponseEntity.ok(projectsService.getCompletionStatus(uid, effectiveDate));
     }
     @PostMapping("/save")
     @ResponseStatus(HttpStatus.CREATED)
