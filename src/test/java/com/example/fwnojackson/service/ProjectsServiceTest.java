@@ -27,6 +27,8 @@ class ProjectsServiceTest {
     private final String BARE_SUBPROJECT_MSG = "Subproject must be added with at least one related Task";
     private final String CANNOT_REMOVE_CHILD_MSG = "Cannot remove the last remaining child";
     private final String WRONG_CHILD_MSG = "Given uid is not a child of the specified parent";
+    private final String START_DATE_MSG = "Start date cannot be after end date";
+    private final String ONLY_TASK_DATES_MSG = "Only a Task's dates can be updated";
 
     @BeforeEach
     void setUp() {
@@ -258,13 +260,53 @@ class ProjectsServiceTest {
         assertThat(root.get("startDate")).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(root.get("endDate")).isEqualTo(LocalDate.of(2026, 3, 10));
     }
+    @Test
+    void updateTaskDates_updatesTaskAndAllAncestorsFollow() {
+        loadRootWithSubprojectAndTask();
+        ResponseDto<ProjectComponent> response =
+                service.updateTaskDates("t1", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 20));
+        assertThat(response.getMessage()).isEqualTo("Updated");
+        assertThat(response.getEntitiesCount()).isEqualTo(1);
+        for (String uid : List.of("t1", "sp1", "p1")) {   // task, its subproject, the root
+            assertThat(service.getProjects().get(uid).getStartDate()).isEqualTo(LocalDate.of(2026, 3, 1));
+            assertThat(service.getProjects().get(uid).getEndDate()).isEqualTo(LocalDate.of(2026, 3, 20));
+        }
+    }
+    @Test
+    void updateTaskDates_rejectsUnknownUid() {
+        loadRootWithSubprojectAndTask();
+        ResponseDto<ProjectComponent> response =
+                service.updateTaskDates("nope", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 20));
+        assertThat(response.getMessage()).isEqualTo("Unknown uid provided");
+    }
+    @Test
+    void updateTaskDates_rejectsNonTaskTarget() {
+        loadRootWithSubprojectAndTask();
+        ResponseDto<ProjectComponent> response =
+                service.updateTaskDates("sp1", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 20));
+        assertThat(response.getMessage()).isEqualTo(ONLY_TASK_DATES_MSG);
+    }
+    @Test
+    void updateTaskDates_rejectsStartAfterEndAndLeavesTaskUnchanged() {
+        loadRootWithSubprojectAndTask();
+        ResponseDto<ProjectComponent> response =
+                service.updateTaskDates("t1", LocalDate.of(2026, 3, 20), LocalDate.of(2026, 3, 1));
+        assertThat(response.getMessage()).isEqualTo(START_DATE_MSG);
+        assertThat(service.getProjects().get("t1").getStartDate()).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(service.getProjects().get("t1").getEndDate()).isEqualTo(LocalDate.of(2026, 1, 10));
+    }
     @SuppressWarnings("unchecked")
     private int countNodes(Map<String, Object> node) {
         List<Map<String, Object>> children = (List<Map<String, Object>>) node.get("children");
         if (children == null) return 1;
         return 1 + children.stream().mapToInt(this::countNodes).sum();
     }
-
+    private void loadRootWithSubprojectAndTask() {
+        service.loadAllProjectEntities(new ProjectsDto(List.of(
+                node("p1", "Root", "PROJECT", null, null, null),
+                node("sp1", "Sub", "PROJECT", "p1", null, null),
+                node("t1", "Task 1", "TASK", "sp1", "2026-01-01", "2026-01-10"))));
+    }
     private ProjectNodeDTO node(String uid, String name, String type,
                                 String parentUid, String start, String end) {
         ProjectNodeDTO dto = new ProjectNodeDTO();

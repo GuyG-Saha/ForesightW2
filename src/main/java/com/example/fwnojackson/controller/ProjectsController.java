@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,8 @@ import java.util.Map;
 public class ProjectsController {
     @Autowired
     ProjectsService projectsService;
+    public record UpdateDatesRequest(LocalDate startDate, LocalDate endDate) {}
+
     @GetMapping("/projects")
     public ResponseEntity<Map<String, ?>> getAllProjects(@RequestParam(required = false) String type) {
         if (type == null || type.isEmpty())
@@ -44,9 +47,10 @@ public class ProjectsController {
     public ResponseDto<?> uploadFile(@RequestBody ProjectsDto input) {
         return projectsService.loadAllProjectEntities(input);
     }
-    @PatchMapping("/setStartEndDates/{Uid}")
-    public ResponseEntity<ResponseDto<?>> setStartEndDatesToProject(@PathVariable String Uid) {
-        return ResponseEntity.ok(new ResponseDto<>("Test", 0));
+    @PatchMapping("/projects/{uid}/dates")
+    public ResponseEntity<ResponseDto<ProjectComponent>> updateTaskDates(
+            @PathVariable String uid, @RequestBody UpdateDatesRequest request) {
+        return ResponseEntity.ok(projectsService.updateTaskDates(uid, request.startDate(), request.endDate()));
     }
     @PostMapping("/save")
     @ResponseStatus(HttpStatus.CREATED)
