@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -125,11 +126,155 @@ class ProjectsServiceTest {
         assertThat(response.getMessage()).isEqualTo(WRONG_CHILD_MSG);
     }
     @Test
+    void removeEntity_updatesParentDatesWithoutRecalculation() {
+        service.loadAllProjectEntities(new ProjectsDto(List.of(
+                node("p1", "Root", "PROJECT", null, null, null),
+                node("t1", "Early task", "TASK", "p1", "2026-01-01", "2026-01-10"),
+                node("t2", "Late task", "TASK", "p1", "2026-02-01", "2026-02-10"))));
+
+        ProjectComponent root = service.getProjects().get("p1");
+        assertThat(root.getStartDate()).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(root.getEndDate()).isEqualTo(LocalDate.of(2026, 2, 10));
+        ResponseDto<ProjectComponent> response = service.removeEntity("p1", "t1");
+        assertThat(response.getEntitiesCount()).isEqualTo(1);
+        assertThat(service.getProjects()).doesNotContainKey("t1");
+        // the same root object now reports the remaining task's dates
+        assertThat(root.getStartDate()).isEqualTo(LocalDate.of(2026, 2, 1));
+        assertThat(root.getEndDate()).isEqualTo(LocalDate.of(2026, 2, 10));
+    }
+
+    @Test
+    void removeEntity_removingSubprojectPurgesItsSubtreeAndUpdatesDates() {
+        // p1
+        //  ├── sp1
+        //  │    └── t1  2026-01-01 .. 2026-01-10
+        //  └── t2       2026-02-01 .. 2026-02-10
+        service.loadAllProjectEntities(new ProjectsDto(List.of(
+                node("p1", "Root", "PROJECT", null, null, null),
+                node("sp1", "Sub", "PROJECT", "p1", null, null),
+                node("t1", "Task 1", "TASK", "sp1", "2026-01-01", "2026-01-10"),
+                node("t2", "Task 2", "TASK", "p1", "2026-02-01", "2026-02-10"))));
+
+        ResponseDto<ProjectComponent> response = service.removeEntity("p1", "sp1");
+
+        assertThat(response.getEntitiesCount()).isEqualTo(2);    // sp1 + t1
+        assertThat(service.getProjects()).containsOnlyKeys("p1", "t2"); // no zombie entries
+        ProjectComponent root = service.getProjects().get("p1");
+        assertThat(root.getChildren()).extracting(ProjectComponent::getUid).containsExactly("t2");
+        assertThat(root.getStartDate()).isEqualTo(LocalDate.of(2026, 2, 1));
+        assertThat(root.getEndDate()).isEqualTo(LocalDate.of(2026, 2, 10));
+    }
+    @Test
     void loadAllProjectEntities_acceptsRootWithNoChildrenYet() {
         ResponseDto<?> response = service.loadAllProjectEntities(rootOnlyTree());
         assertThat(response.getMessage()).isEqualTo("CREATED");
         assertThat(response.getEntitiesCount()).isEqualTo(1);
         assertThat(service.getProjects()).containsOnlyKeys("p1");
+    }
+    @Test
+    void serializeProjectStructure_throwsWhenNothingLoaded() {
+        assertThatThrownBy(() -> service.serializeProjectStructure())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("root project is null");
+    }
+    @Test
+    @SuppressWarnings("unchecked")
+    void serializeProjectStructure_buildNestedHierarchyCheckSize() {
+        // p1 (root)
+        //  ├── sp1 (subproject)
+        //       └── t1  2026-01-01 .. 2026-01-10
+        //       └── t2  2026-01-14 .. 2026-01-17
+        service.loadAllProjectEntities(new ProjectsDto(List.of(
+                node("p1", "Root", "PROJECT", null, null, null),
+                node("sp1", "Sub", "PROJECT", "p1", null, null),
+                node("t1", "Task 1", "TASK", "sp1", "2026-01-01", "2026-01-10"),
+                node("t2", "Task 2", "TASK", "sp1", "2026-01-14", "2026-01-17"))));
+
+        Map<String, Object> root = service.serializeProjectStructure();
+        assertThat(root.get("uid")).isEqualTo("p1");
+        assertThat(root.get("type")).isEqualTo(ProjectType.PROJECT);
+        assertThat(root.get("parentUid")).isNull();
+
+        int allNodesCount = countNodes(root);
+        assertThat(allNodesCount).isEqualTo(4);
+    }
+    @Test
+    void serializeProjectStructure_includesEveryFixtureNode() throws Exception {
+        ProjectsDto dto = loadFixture();
+        service.loadAllProjectEntities(dto);
+        int fixtureNodesCount = countNodes(service.serializeProjectStructure());
+        assertThat(fixtureNodesCount).isEqualTo(dto.getItems().size());
+    }
+    @Test
+    @SuppressWarnings("unchecked")
+    void serializeProjectStructure_buildsNestedHierarchyWithDerivedParentUid() {
+        // p1 (root)
+        //  ├── sp1 (subproject)
+        //  │    └── t1  2026-01-01 .. 2026-01-10
+        //  └── t2       2026-02-01 .. 2026-02-10
+        service.loadAllProjectEntities(new ProjectsDto(List.of(
+                node("p1", "Root", "PROJECT", null, null, null),
+                node("sp1", "Sub", "PROJECT", "p1", null, null),
+                node("t1", "Task 1", "TASK", "sp1", "2026-01-01", "2026-01-10"),
+                node("t2", "Task 2", "TASK", "p1", "2026-02-01", "2026-02-10"))));
+
+        Map<String, Object> root = service.serializeProjectStructure();
+        assertThat(root.get("uid")).isEqualTo("p1");
+        assertThat(root.get("type")).isEqualTo(ProjectType.PROJECT);
+        assertThat(root.get("parentUid")).isNull();
+        assertThat(root.get("startDate")).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(root.get("endDate")).isEqualTo(LocalDate.of(2026, 2, 10));
+
+        // children appear in the order they were attached
+        List<Map<String, Object>> rootChildren = (List<Map<String, Object>>) root.get("children");
+        assertThat(rootChildren).extracting(c -> c.get("uid")).containsExactly("sp1", "t2");
+
+        // subproject: type derived from position, parentUid threaded from above
+        Map<String, Object> sp1 = rootChildren.get(0);
+        assertThat(sp1.get("type")).isEqualTo(ProjectType.SUBPROJECT);
+        assertThat(sp1.get("parentUid")).isEqualTo("p1");
+        assertThat(sp1.get("startDate")).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(sp1.get("endDate")).isEqualTo(LocalDate.of(2026, 1, 10));
+
+        // leaf: correct parentUid, and no "children" key at all
+        Map<String, Object> t1 = ((List<Map<String, Object>>) sp1.get("children")).get(0);
+        assertThat(t1.get("parentUid")).isEqualTo("sp1");
+        assertThat(t1).doesNotContainKey("children");
+    }
+
+    @Test
+    void serializeProjectStructure_reflectsLaterMutationsWithoutRecalculation() {
+        service.loadAllProjectEntities(new ProjectsDto(List.of(
+                node("p1", "Root", "PROJECT", null, null, null),
+                node("t1", "Task 1", "TASK", "p1", "2026-03-01", "2026-03-10"))));
+        assertThat(service.serializeProjectStructure().get("startDate"))
+                .isEqualTo(LocalDate.of(2026, 3, 1));
+
+        service.addNewEntity("p1", new Task("t2", "Earlier task",
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 5)));
+
+        // nothing "recomputes" anywhere; the root's dates are derived live
+        Map<String, Object> root = service.serializeProjectStructure();
+        assertThat(root.get("startDate")).isEqualTo(LocalDate.of(2026, 1, 1));
+        assertThat(root.get("endDate")).isEqualTo(LocalDate.of(2026, 3, 10));
+    }
+    @SuppressWarnings("unchecked")
+    private int countNodes(Map<String, Object> node) {
+        List<Map<String, Object>> children = (List<Map<String, Object>>) node.get("children");
+        if (children == null) return 1;
+        return 1 + children.stream().mapToInt(this::countNodes).sum();
+    }
+
+    private ProjectNodeDTO node(String uid, String name, String type,
+                                String parentUid, String start, String end) {
+        ProjectNodeDTO dto = new ProjectNodeDTO();
+        dto.uid = uid;
+        dto.name = name;
+        dto.type = type;
+        dto.parentUid = parentUid;
+        dto.startDate = start;
+        dto.endDate = end;
+        return dto;
     }
     private void printTree(ProjectComponent node, String indent) {
         System.out.println(indent + "- [" + node.getType() + "] " + node.getName()
