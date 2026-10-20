@@ -148,13 +148,6 @@ public class ProjectsService {
         }
         return map;
     }
-    private List<Map<String, Object>> serializeChildren(String parentUid, Map<String, ProjectComponent> subprojects, Map<String, ProjectComponent> tasks) throws JsonProcessingException {
-        List<Map<String, Object>> childrenList = new ArrayList<>();
-
-        return childrenList;
-    }
-
-
     public Map<String, ProjectComponent> getProjects() {
         return allProjects;
     }
