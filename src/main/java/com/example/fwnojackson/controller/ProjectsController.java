@@ -1,10 +1,10 @@
 package com.example.fwnojackson.controller;
 
+import com.example.fwnojackson.dto.NewNodeRequest;
 import com.example.fwnojackson.dto.ProjectsDto;
 import com.example.fwnojackson.dto.ResponseDto;
-import com.example.fwnojackson.model.ProjectComponent;
+import com.example.fwnojackson.dto.ProjectTreeBuilder;
 import com.example.fwnojackson.service.ProjectsService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -12,59 +12,63 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
 @RestController
 @RequestMapping("/api")
 public class ProjectsController {
-    @Autowired
-    ProjectsService projectsService;
+
+    private final ProjectsService projectsService;
+
+    public ProjectsController(ProjectsService projectsService) {
+        this.projectsService = projectsService;
+    }
+
     public record UpdateDatesRequest(LocalDate startDate, LocalDate endDate) {}
 
-    @GetMapping("/projects")
-    public ResponseEntity<Map<String, ?>> getAllProjects(@RequestParam(required = false) String type) {
-        if (type == null || type.isEmpty())
-            return ResponseEntity.badRequest().body(Map.of("error", "Type parameter is required"));
-        switch (type.toUpperCase()) {
-            case "PROJECT", "PROJECTS", "TASK", "TASKS", "SUBPROJECT", "SUBPROJECTS" -> {
-                return ResponseEntity.ok(projectsService.getProjects());
-            }
-            default -> {
-                return ResponseEntity.badRequest().body(Map.of("error", "Invalid type parameter. Allowed values: PROJECT, SUBPROJECT, TASK"));
-            }
-        }
+    @PostMapping("/upload")
+    public ResponseEntity<ResponseDto<?>> uploadFile(@RequestBody ProjectsDto input) {
+        return respond(projectsService.loadAllProjectEntities(input), HttpStatus.CREATED);
     }
+
     @GetMapping("/projects/hierarchy")
     public ResponseEntity<Map<String, Object>> getProjectHierarchyAsJson() {
         return ResponseEntity.ok(projectsService.serializeProjectStructure());
     }
-    @GetMapping("/relations")
-    public Map<String, ProjectComponent> getAllProjectsRelations() {
-        return projectsService.getProjects();
+
+    @PostMapping("/projects/{parentUid}/children")
+    public ResponseEntity<ResponseDto<?>> addNode(@PathVariable String parentUid,
+                                                  @RequestBody NewNodeRequest request) {
+        return respond(projectsService.addNewEntity(parentUid, ProjectTreeBuilder.buildNode(request)),
+                HttpStatus.CREATED);
     }
-    @PostMapping("/upload")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseDto<?> uploadFile(@RequestBody ProjectsDto input) {
-        return projectsService.loadAllProjectEntities(input);
+
+    @DeleteMapping("/projects/{parentUid}/children/{uid}")
+    public ResponseEntity<ResponseDto<?>> removeNode(@PathVariable String parentUid,
+                                                     @PathVariable String uid) {
+        return respond(projectsService.removeEntity(parentUid, uid), HttpStatus.OK);
     }
+
     @PatchMapping("/projects/{uid}/dates")
-    public ResponseEntity<ResponseDto<ProjectComponent>> updateTaskDates(
-            @PathVariable String uid, @RequestBody UpdateDatesRequest request) {
-        return ResponseEntity.ok(projectsService.updateTaskDates(uid, request.startDate(), request.endDate()));
+    public ResponseEntity<ResponseDto<?>> updateTaskDates(@PathVariable String uid,
+                                                          @RequestBody UpdateDatesRequest request) {
+        return respond(projectsService.updateTaskDates(uid, request.startDate(), request.endDate()),
+                HttpStatus.OK);
     }
+
     @GetMapping("/projects/{uid}/completion")
     public ResponseEntity<Double> getCompletionStatus(
             @PathVariable String uid,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate date) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         LocalDate effectiveDate = Objects.requireNonNullElseGet(date, LocalDate::now);
         return ResponseEntity.ok(projectsService.getCompletionStatus(uid, effectiveDate));
     }
-    @PostMapping("/save")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<ResponseDto<ProjectComponent>> saveNewEntity(@RequestBody ProjectComponent entity) {
-        return ResponseEntity.ok(projectsService.addNewEntity(entity.getUid(), entity));
+
+    // Every service method reports failure in-band with entitiesCount == 0, so that decides the status.
+    private static ResponseEntity<ResponseDto<?>> respond(ResponseDto<?> dto, HttpStatus onSuccess) {
+        if (dto.getEntitiesCount() > 0) {
+            return ResponseEntity.status(onSuccess).body(dto);
+        }
+        return ResponseEntity.badRequest().body(dto);
     }
 }
