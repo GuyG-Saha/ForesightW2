@@ -226,22 +226,78 @@ The non-trivial logic lives in exactly one place each: date roll-up in ProjectCo
 
 ## Testing
 
-This branch also introduced the project's first real unit tests (JUnit 5 +
-AssertJ, already available via `spring-boot-starter-test` — no new
-dependency needed), replacing what had previously been manual testing only.
+This branch also introduced the project's first real tests (JUnit 5 + AssertJ,
+already available via `spring-boot-starter-test`, so no new dependency),
+replacing what had previously been manual testing only. Run them with
+`./gradlew test` (or `gradlew.bat test` on Windows), or from the IDE.
 
-`ProjectsServiceTest`:
-- `loadAllProjectEntities_registersEveryNodeFromTheFixture` — loads a full
-  realistic tree from a JSON fixture and confirms every node is indexed.
+Most tests build a small, purpose-made tree through the service's public API
+rather than relying on a shared fixture, so each one is readable on its own.
+`Inputs.JSON_INPUT` (a large realistic project tree) is used only where scale
+is the point.
+
+### `ProjectsServiceTest`
+
+**Loading**
+- `loadAllProjectEntities_registersEveryNodeFromTheFixture`: loads the full
+  fixture and confirms every node is indexed.
 - `loadAllProjectEntities_rejectsEmptyPayload`
-- `loadAllProjectEntities_acceptsRootWithNoChildrenYet`
-- `addNewEntity_addsTaskUnderExistingSubproject`
-- `addNewEntity_rejectsSubprojectWithNoChildren`
-- `removeEntity_rejectsRemovingTheLastRemainingChild`
-- `removeEntity_rejectsWhenParentUidDoesNotMatchTarget`
+- `loadAllProjectEntities_acceptsRootWithNoChildrenYet`: documents that a
+  bare root loads (the "at least one child" rule is not enforced at upload).
 
-`ProjectTreeBuilderTest`:
-- `buildTree_rejectsMultipleRoots`
+**Adding**
+- `addNewEntity_addsTaskUnderExistingSubproject`
+- `addNewEntity_rejectsSubprojectWithNoChildren`: a Subproject must arrive
+  with at least one Task.
+
+**Removing**
+- `removeEntity_rejectsRemovingTheLastRemainingChild`: a parent is never left
+  empty.
+- `removeEntity_rejectsWhenParentUidDoesNotMatchTarget`: a wrong `parentUid`
+  is rejected instead of silently detaching nothing.
+- `removeEntity_updatesParentDatesWithoutRecalculation`: after a removal, the
+  parent reports the remaining children's dates with no recalculation step.
+- `removeEntity_removingSubprojectPurgesItsSubtreeAndUpdatesDates`: removing a
+  Subproject removes its Tasks from both the tree and the uid index.
+
+**Serialization**
+- `serializeProjectStructure_throwsWhenNothingLoaded`
+- `serializeProjectStructure_buildNestedHierarchyCheckSize`: child counts at
+  each level of a root → subproject → tasks tree.
+- `serializeProjectStructure_includesEveryFixtureNode`: counts every node in
+  the serialized fixture against the input size.
+- `serializeProjectStructure_buildsNestedHierarchyWithDerivedParentUid`:
+  `parentUid` is derived during serialization, `PROJECT` vs `SUBPROJECT` comes
+  from tree position, and a Task has no `children` key.
+- `serializeProjectStructure_reflectsLaterMutationsWithoutRecalculation`: the
+  Composite payoff, since derived dates follow later changes automatically.
+
+**Updating a Task's dates**
+- `updateTaskDates_updatesTaskAndAllAncestorsFollow`
+- `updateTaskDates_rejectsUnknownUid`
+- `updateTaskDates_rejectsNonTaskTarget`: Project and Subproject dates are
+  never set directly.
+- `updateTaskDates_rejectsStartAfterEndAndLeavesTaskUnchanged`: a rejected
+  update changes nothing.
+
+**Completion status**
+- `getCompletionStatus_matchesAssignmentExamples`: parameterized over the
+  assignment's own dates (0% before start and on day one, 10% on day two, 90%
+  on day ten, 100% after the end).
+- `getCompletionStatus_projectUsesRolledUpSpan`: a Project's completion is
+  measured over its rolled-up span, not averaged from its children.
+- `getCompletionStatus_rejectsUnknownUid`
+
+### `ProjectTreeBuilderTest`
+- `buildTree_rejectsMultipleRoots`: two nodes without a `parentUid` are
+  rejected instead of one silently winning.
+
+### What the tests don't cover
+These are plain unit tests: they construct `ProjectsService` directly and never
+start Spring. That means the controller layer, JSON binding and application
+startup are untested. A leftover JPA repository once crashed startup while
+every unit test stayed green. A `@SpringBootTest` smoke test and `MockMvc`
+controller tests are the natural next step.
 
 ## Current status
 
