@@ -73,5 +73,23 @@ public class ProjectTreeBuilder {
         }
         return root;
     }
+    public static ProjectComponent buildNode(NewNodeRequest request) {
+        boolean hasChildren = request.children() != null && !request.children().isEmpty();
+        if ("TASK".equalsIgnoreCase(request.type())) {
+            if (hasChildren) {
+                throw new IllegalArgumentException("A Task cannot have children: " + request.uid());
+            }
+            return new Task(request.uid(), request.name(), request.startDate(), request.endDate());
+        }
+        if ("PROJECT".equalsIgnoreCase(request.type()) || "SUBPROJECT".equalsIgnoreCase(request.type())) {
+            // anything added under an existing parent is a SUBPROJECT, never a root PROJECT
+            ProjectComposite subproject = new ProjectComposite(request.uid(), request.name(), ProjectType.SUBPROJECT);
+            if (hasChildren) {
+                request.children().forEach(child -> subproject.addChild(buildNode(child)));
+            }
+            return subproject;
+        }
+        throw new IllegalArgumentException("Unknown type: " + request.type());
+    }
 }
 
