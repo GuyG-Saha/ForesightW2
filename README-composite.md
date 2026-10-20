@@ -13,7 +13,7 @@ pattern](https://refactoring.guru/design-patterns/composite) instead?** It's
 a practice exercise, not a resubmission — the goal was to see whether a
 "more correct" OO structure actually pays for itself here, or whether it's
 over-engineering a problem that's genuinely simpler as flat data. My take,
-after building it: for *this* hierarchy, Composite earns its keep. The
+after building it: for *this* hierarchy, Composite absolutely earns its keep. The
 reasoning is below.
 
 ## Why Composite fits this problem specifically
@@ -214,6 +214,12 @@ Rather than wrapping individual controller methods in `try/catch`,
 and by `ProjectsService` for an empty hierarchy) to `400 Bad Request`
 uniformly, once, for every endpoint that can raise them.
 
+**Why POST takes a nested NewNodeRequest, not a domain object:** the Composite can’t be deserialized by Jackson, and anything added under a parent is always a SUBPROJECT.
+
+**Failures** are reported in-band with entitiesCount == 0 and mapped to 400.
+
+**The three endpoints from master that were dropped** are (/projects?type=, /relations, setStartEndDates)
+
 **The payoff: thin methods.** 
 The non-trivial logic lives in exactly one place each: date roll-up in ProjectComposite.getStartDate()/getEndDate(), the completion formula in ProjectComponent.getCompletionStatus(), and hierarchy output in the recursive serializeNode(). Everything above them, such as the service methods and controller endpoints, is a lookup and a single delegating call. Because every node answers for itself, the same call works on a Task, a Subproject or a Project at any depth, with no type branching anywhere. Changing a task’s dates, or adding or removing a node, needs no recalculation step, since ancestors derive their dates on read.
 
@@ -241,10 +247,6 @@ dependency needed), replacing what had previously been manual testing only.
 
 Working and tested: uploading and parsing a project tree, adding a node under a given parent, removing a node (with both guard rules), updating a Task’s dates, completion % for any node on any date, and serializing the full hierarchy to JSON.
 
-Not yet done on this branch:
-
-ProjectsController still has endpoints left over from the earlier flat-map design, which need a rewrite against the current service. That includes exposing removeEntity.
-Swagger/OpenAPI documentation.
 
 ## A note on when *not* to reach for Composite
 
