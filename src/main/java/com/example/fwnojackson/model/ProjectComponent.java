@@ -1,24 +1,10 @@
 package com.example.fwnojackson.model;
 
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-@JsonTypeInfo(
-        use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.PROPERTY,
-        property = "type"
-)
-@JsonSubTypes({
-        @JsonSubTypes.Type(value = Task.class, name = "TASK"),
-        @JsonSubTypes.Type(value = ProjectComposite.class, name = "PROJECT")
-})
 public abstract class ProjectComponent {
     protected String uid;
     protected String name;
