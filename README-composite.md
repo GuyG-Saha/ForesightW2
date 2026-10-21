@@ -220,7 +220,7 @@ uniformly, once, for every endpoint that can raise them.
 
 **The three endpoints from master that were dropped** are (/projects?type=, /relations, setStartEndDates)
 
-**The payoff: thin methods.** 
+**The payoff: thin methods.**
 The non-trivial logic lives in exactly one place each: date roll-up in ProjectComposite.getStartDate()/getEndDate(), the completion formula in ProjectComponent.getCompletionStatus(), and hierarchy output in the recursive serializeNode(). Everything above them, such as the service methods and controller endpoints, is a lookup and a single delegating call. Because every node answers for itself, the same call works on a Task, a Subproject or a Project at any depth, with no type branching anywhere. Changing a task’s dates, or adding or removing a node, needs no recalculation step, since ancestors derive their dates on read.
 
 
@@ -292,12 +292,36 @@ is the point.
 - `buildTree_rejectsMultipleRoots`: two nodes without a `parentUid` are
   rejected instead of one silently winning.
 
-### What the tests don't cover
-These are plain unit tests: they construct `ProjectsService` directly and never
-start Spring. That means the controller layer, JSON binding and application
-startup are untested. A leftover JPA repository once crashed startup while
-every unit test stayed green. A `@SpringBootTest` smoke test and `MockMvc`
-controller tests are the natural next step.
+### HTTP tests (`controller` package)
+
+Unit tests never start Spring, so they can't see wiring, JSON binding or the
+shape of the real response. A leftover JPA repository once crashed startup while
+every unit test stayed green, and a duplicated `"type"` key (see below) slipped
+through the same way. These two classes cover that layer, and are deliberately
+fewer than the unit tests: they check the contract, not the logic.
+
+**`ProjectsApiTest`** (`@SpringBootTest` + `MockMvc`, real service, no mocks)
+- `contextLoads`: the application starts at all.
+- `uploadReadUpdateAddRemove`: one end-to-end flow through the real endpoints:
+  upload, read the hierarchy, move a Task's dates and watch the root's dates
+  follow, completion %, add a nested Subproject, hit the last-child guard, remove
+  the Subproject. It also counts the raw `"type"` keys in the removal response,
+  which is the regression guard for the duplicate-key bug.
+
+**`ProjectsControllerTest`** (`@WebMvcTest`, web layer only, service mocked)
+- `inBandFailureBecomes400`: a service result with count 0 becomes HTTP 400.
+- `serviceExceptionIsMappedTo400ByTheControllerAdvice`
+- `nestedAddRequestIsBoundAndBuiltIntoASubprojectWithItsTask`: the nested request
+  body is bound and turned into a `SUBPROJECT` containing its Task.
+- `unknownNodeTypeInAddRequestIs400`
+- `completionDateParameterIsBound`: the `?date=` query parameter reaches the
+  service as a `LocalDate`.
+
+### What the tests still don't cover
+The service has a few known gaps that are not yet fixed or tested: re-uploading
+does not clear the previous uid index, `addNewEntity` does not reject a duplicate
+uid, and an empty Subproject nested deeper inside a new subtree is not caught.
+Swagger/OpenAPI documentation is not set up either.
 
 ## Current status
 
